@@ -1,7 +1,7 @@
 {
   "name": "locksmith",
   "version": "1.0.0",
-  "description": "",
+  "description": "A CLI tool for developers to seamlessly add authentication infrastructure to AI applications—supports modern auth providers, database schemas, and secrets generation for secure and scalable projects.",
   "main": "index.js",
   "bin": {
     "locksmith": "index.js"
@@ -9,8 +9,24 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "cli",
+    "authentication",
+    "auth",
+    "developers",
+    "infrastructure",
+    "security",
+    "provider"
+  ],
+  "author": "Saif Ali Shaik",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Saif-Shines/locksmith.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Saif-Shines/locksmith/issues"
+  },
+  "homepage": "https://saifshines.dev/notes/locksmith-cli/",
   "packageManager": "pnpm@10.15.0"
 }
