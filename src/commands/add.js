@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import open from 'open';
-import ora from 'ora';
+import { startSpinner } from '../utils/display/spinner.js';
 import {
   shouldUseInteractive,
   confirmIfInteractive,
@@ -452,11 +452,7 @@ export async function handleAddCommand(options = {}) {
   );
 
   // 1. Validate credentials and handle init if needed
-  const credentialsSpinner = ora({
-    text: '🔐 Validating authentication credentials...',
-    color: 'blue',
-    spinner: 'dots',
-  }).start();
+  const credentialsSpinner = startSpinner('CREDENTIAL_VALIDATION');
 
   const credentialsValid = await validateCredentials(useInteractive);
   if (!credentialsValid) {
@@ -466,11 +462,7 @@ export async function handleAddCommand(options = {}) {
   credentialsSpinner.succeed('✅ Credentials validated');
 
   // 2. Handle module selection
-  const moduleSpinner = ora({
-    text: '📦 Selecting authentication modules...',
-    color: 'cyan',
-    spinner: 'dots',
-  }).start();
+  const moduleSpinner = startSpinner('MODULE_SELECTION');
 
   const moduleSelection = await selectModules({ module, useInteractive });
   if (!moduleSelection.shouldContinue) {
@@ -507,11 +499,7 @@ export async function handleAddCommand(options = {}) {
   }
 
   // 5. Get user confirmation
-  const confirmationSpinner = ora({
-    text: '📋 Preparing module configuration...',
-    color: 'yellow',
-    spinner: 'dots',
-  }).start();
+  const confirmationSpinner = startSpinner('MODULE_CONFIRMATION');
 
   const confirmed = await confirmModuleAddition(
     selectedModules,
@@ -529,11 +517,7 @@ export async function handleAddCommand(options = {}) {
   let callbackUri = null;
   if (configureRedirects && !dryRun) {
     console.log();
-    const redirectSpinner = ora({
-      text: '🔗 Configuring redirect URLs...',
-      color: 'cyan',
-      spinner: 'dots',
-    }).start();
+    const redirectSpinner = startSpinner('REDIRECT_CONFIG');
 
     try {
       callbackUri = await handleRedirectConfiguration({
@@ -548,11 +532,7 @@ export async function handleAddCommand(options = {}) {
   }
 
   // 7. Save modules and configuration
-  const saveSpinner = ora({
-    text: '💾 Saving authentication modules...',
-    color: 'green',
-    spinner: 'dots',
-  }).start();
+  const saveSpinner = startSpinner('MODULE_SAVING');
 
   const success = saveModulesAndConfiguration(
     selectedModules,

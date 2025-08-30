@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import open from 'open';
-import ora from 'ora';
+import { startSpinner } from '../utils/display/spinner.js';
 import { saveCredentials, hasCredentials } from '../utils/core/config.js';
 import {
   ErrorScenarios,
@@ -425,11 +425,7 @@ export async function handleInitCommand(options = {}) {
   }
 
   // 3. Handle interactive provider selection
-  const providerSpinner = ora({
-    text: '🔍 Selecting authentication provider...',
-    color: 'blue',
-    spinner: 'dots',
-  }).start();
+  const providerSpinner = startSpinner('PROVIDER_SELECTION');
 
   const selectedProvider = await handleProviderSelection();
   if (!selectedProvider) {
@@ -443,21 +439,13 @@ export async function handleInitCommand(options = {}) {
   );
 
   // 4. Open ScaleKit signup page
-  const signupSpinner = ora({
-    text: '🌐 Opening ScaleKit signup page...',
-    color: 'cyan',
-    spinner: 'dots',
-  }).start();
+  const signupSpinner = startSpinner('BROWSER_SIGNUP');
 
   await openScaleKitSignup();
   signupSpinner.succeed('✅ ScaleKit signup page opened');
 
   // 5. Collect environment ID
-  const envSpinner = ora({
-    text: '🔑 Collecting environment ID...',
-    color: 'yellow',
-    spinner: 'dots',
-  }).start();
+  const envSpinner = startSpinner('ENVIRONMENT_COLLECTION');
 
   const collectedEnvironmentId = await collectEnvironmentId();
   if (!collectedEnvironmentId) {
@@ -467,21 +455,13 @@ export async function handleInitCommand(options = {}) {
   envSpinner.succeed('✅ Environment ID collected');
 
   // 6. Open API credentials page
-  const credentialsSpinner = ora({
-    text: '🔐 Opening API credentials page...',
-    color: 'cyan',
-    spinner: 'dots',
-  }).start();
+  const credentialsSpinner = startSpinner('BROWSER_CREDENTIALS');
 
   await openApiCredentialsPage(collectedEnvironmentId);
   credentialsSpinner.succeed('✅ API credentials page opened');
 
   // 7. Collect and validate remaining credentials
-  const collectSpinner = ora({
-    text: '📝 Collecting API credentials...',
-    color: 'green',
-    spinner: 'dots',
-  }).start();
+  const collectSpinner = startSpinner('CREDENTIAL_COLLECTION');
 
   const credentials = await collectAndValidateCredentials(
     collectedEnvironmentId
@@ -493,11 +473,7 @@ export async function handleInitCommand(options = {}) {
   collectSpinner.succeed('✅ API credentials collected and validated');
 
   // 8. Confirm and save credentials
-  const saveSpinner = ora({
-    text: '💾 Saving authentication configuration...',
-    color: 'green',
-    spinner: 'dots',
-  }).start();
+  const saveSpinner = startSpinner('CONFIG_SAVING');
 
   try {
     await confirmAndSaveCredentials(credentials);

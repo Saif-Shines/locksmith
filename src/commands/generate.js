@@ -3,7 +3,7 @@ import { execa } from 'execa';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import ora from 'ora';
+import { startSpinner, startBrokerSpinner } from '../utils/display/spinner.js';
 
 // Using alias files for cleaner imports
 import {
@@ -727,11 +727,7 @@ async function promptMissingLLMBroker(handler) {
  * Comprehensive setup validation with targeted prompts
  */
 async function ensureCompleteSetup(handler) {
-  const setupSpinner = ora({
-    text: '🔍 Validating Locksmith setup...',
-    color: 'blue',
-    spinner: 'dots',
-  }).start();
+  const setupSpinner = startSpinner('SETUP_VALIDATION');
 
   try {
     // 1. Check auth credentials
@@ -742,7 +738,7 @@ async function ensureCompleteSetup(handler) {
       if (!success) {
         return false;
       }
-      setupSpinner.start();
+      setupSpinner = startSpinner('SETUP_VALIDATION');
     }
 
     // 2. Check callback URI
@@ -754,7 +750,7 @@ async function ensureCompleteSetup(handler) {
       if (!success) {
         return false;
       }
-      setupSpinner.start();
+      setupSpinner = startSpinner('SETUP_VALIDATION');
     }
 
     // 3. Check auth modules
@@ -765,7 +761,7 @@ async function ensureCompleteSetup(handler) {
       if (!success) {
         return false;
       }
-      setupSpinner.start();
+      setupSpinner = startSpinner('SETUP_VALIDATION');
     }
 
     // 4. Check LLM broker
@@ -777,7 +773,7 @@ async function ensureCompleteSetup(handler) {
       if (!success) {
         return false;
       }
-      setupSpinner.start();
+      setupSpinner = startSpinner('SETUP_VALIDATION');
     }
 
     setupSpinner.succeed('✅ Setup validation complete');
@@ -853,11 +849,7 @@ export async function handleGenerateCommand(options = {}) {
     // Execute with configured LLM broker
     const preferredBroker = (loadPreferredBroker() || '').toLowerCase();
 
-    const generationSpinner = ora({
-      text: `🚀 Generating configurations with ${preferredBroker}...`,
-      color: 'green',
-      spinner: 'dots',
-    }).start();
+    const generationSpinner = startBrokerSpinner(preferredBroker);
 
     try {
       switch (preferredBroker) {

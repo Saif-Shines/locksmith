@@ -12,6 +12,7 @@ import {
   detectTools,
   detectToolsWithProgress,
 } from '../utils/core/detection.js';
+import { startSpinner } from '../utils/display/spinner.js';
 import {
   shouldUseInteractive,
   selectIfInteractive,

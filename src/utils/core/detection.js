@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import os from 'os';
-import ora from 'ora';
+import { startSpinner } from '../display/spinner.js';
 
 /**
  * Simple command existence check
@@ -52,15 +52,12 @@ export function detectTools() {
  * Detect tools with progress indicator
  */
 export function detectToolsWithProgress(verbose = false) {
-  const spinner = ora({
-    text: '🔍 Detecting available AI tools...',
-    color: 'cyan',
-    spinner: 'dots',
-  });
-
-  if (!verbose) {
-    spinner.start();
+  if (verbose) {
+    // Skip spinner for verbose mode
+    return detectTools();
   }
+
+  const spinner = startSpinner('TOOL_DETECTION');
 
   try {
     const results = {
@@ -69,22 +66,18 @@ export function detectToolsWithProgress(verbose = false) {
       cursor: hasCursor(),
     };
 
-    if (!verbose) {
-      const availableCount = Object.values(results).filter(Boolean).length;
-      const totalCount = Object.keys(results).length;
+    const availableCount = Object.values(results).filter(Boolean).length;
+    const totalCount = Object.keys(results).length;
 
-      if (availableCount > 0) {
-        spinner.succeed(`✅ Detected ${availableCount}/${totalCount} AI tools`);
-      } else {
-        spinner.warn(`⚠️ No AI tools detected (${totalCount} checked)`);
-      }
+    if (availableCount > 0) {
+      spinner.succeed(`✅ Detected ${availableCount}/${totalCount} AI tools`);
+    } else {
+      spinner.warn(`⚠️ No AI tools detected (${totalCount} checked)`);
     }
 
     return results;
   } catch (error) {
-    if (!verbose) {
-      spinner.fail('❌ Failed to detect AI tools');
-    }
+    spinner.fail('❌ Failed to detect AI tools');
     throw error;
   }
 }
