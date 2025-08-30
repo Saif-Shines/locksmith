@@ -19,6 +19,8 @@ import {
   getAuthModules,
   getCallbackUri,
   loadPreferredBroker,
+  hasCredentials,
+  hasAuthModules,
 } from '../utils/core/config.js';
 import {
   hasClaudeCode,
@@ -26,6 +28,8 @@ import {
   hasCursor,
 } from '../utils/core/detection.js';
 import { handleConfigureLLMBroker } from './configure.js';
+import { handleInitCommand } from './init.js';
+import { handleAddCommand } from './add.js';
 
 // Constants for LLM integrations
 const CLAUDE_PROMPT_LIMIT = 8000;
@@ -527,6 +531,77 @@ async function invokeCursorAgentHeadless(promptContent, tempFile) {
   });
 }
 
+/**
+ * Checks for existing setup and runs init/add flows if needed
+ */
+async function ensureSetupExists(handler) {
+  const hasExistingCredentials = hasCredentials();
+  const hasExistingModules = hasAuthModules();
+
+  // If credentials exist, we can proceed (modules are optional)
+  if (hasExistingCredentials) {
+    // If modules also exist, we're fully set up
+    if (hasExistingModules) {
+      return true;
+    }
+
+    // If only credentials exist but no modules, offer to add modules but don't require it
+    console.log(
+      chalk.yellow(
+        '⚠️  Credentials found but no authentication modules configured.'
+      )
+    );
+    console.log(
+      chalk.cyan(
+        '💡 You can add modules now or proceed with generation (modules can be added later).\n'
+      )
+    );
+
+    console.log(chalk.blue('🔧 Adding authentication modules...'));
+    await handleAddCommand({
+      interactive: true,
+      ...handler.options,
+    });
+
+    // Even if no modules were added, we can still proceed with generation
+    // The original generate logic handles the case of no modules gracefully
+    console.log(chalk.green('\n✅ Proceeding with generation...\n'));
+    return true;
+  }
+
+  // No credentials exist, need full setup
+  console.log(chalk.yellow('⚠️  No existing Locksmith setup found.'));
+  console.log(chalk.cyan("💡 Let's get you set up first...\n"));
+
+  // Run init flow to get credentials
+  console.log(chalk.blue('🔐 Running authentication setup...'));
+  await handleInitCommand({
+    interactive: true,
+    ...handler.options,
+  });
+
+  // Check if init was successful
+  if (!hasCredentials()) {
+    console.log(
+      chalk.red('❌ Setup incomplete. Cannot proceed with generation.')
+    );
+    return false;
+  }
+
+  // Now try to add modules (optional)
+  console.log(chalk.blue('🔧 Adding authentication modules...'));
+  await handleAddCommand({
+    interactive: true,
+    ...handler.options,
+  });
+
+  // Even if no modules were added, we can proceed since we have credentials
+  console.log(
+    chalk.green('\n✅ Setup complete! Proceeding with generation...\n')
+  );
+  return true;
+}
+
 export async function handleGenerateCommand(options = {}) {
   return await ErrorHandler.withErrorHandling(async () => {
     const handler = new CommandHandler(options);
@@ -545,6 +620,12 @@ export async function handleGenerateCommand(options = {}) {
       'Generating secure configurations for your AI applications...',
       'This will create encrypted configs based on your authentication setup.'
     );
+
+    // Check for existing setup and run init/add flows if needed
+    const setupExists = await ensureSetupExists(handler);
+    if (!setupExists) {
+      return CommandResult.success('Setup cancelled or incomplete');
+    }
 
     // 1. Validate and select modules
     const savedModules = getAuthModules();
