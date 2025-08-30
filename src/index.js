@@ -20,7 +20,7 @@ function handleUnknownCommand(command) {
   process.exit(1);
 }
 
-function handleCommand(command) {
+async function handleCommand(command) {
   const commandHandlers = {
     init: handleInitCommand,
     add: handleAddCommand,
@@ -28,7 +28,7 @@ function handleCommand(command) {
   };
 
   if (commandHandlers[command]) {
-    commandHandlers[command]();
+    await commandHandlers[command]();
   } else if (!command) {
     showMainInterface();
   } else {
@@ -36,11 +36,11 @@ function handleCommand(command) {
   }
 }
 
-function main() {
+async function main() {
   try {
     const cli = initializeCli();
     const [command] = cli.input;
-    handleCommand(command);
+    await handleCommand(command);
   } catch (error) {
     console.error(chalk.red('❌ Error:'), error.message);
     process.exit(1);
