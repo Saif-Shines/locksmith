@@ -5,22 +5,41 @@ import os from 'os';
 import path from 'path';
 
 // Using alias files for cleaner imports
-import { multiselectIfInteractive } from '../utils/interactive/interactive.js';
+import {
+  multiselectIfInteractive,
+  promptIfInteractive,
+  selectIfInteractive,
+} from '../utils/interactive/interactive.js';
 import { CommandHandler, CommandResult } from '../core/command-base.js';
 import { ErrorHandler } from '../core/error-handler.js';
-import { AUTH_MODULE_SETTINGS, AUTH_MODULE_GUIDES } from '../core/constants.js';
+import {
+  AUTH_MODULE_SETTINGS,
+  AUTH_MODULE_GUIDES,
+  SUPPORTED_AUTH_MODULES,
+  AVAILABLE_BROKERS,
+} from '../core/constants.js';
 import {
   getAuthModules,
   getCallbackUri,
   loadPreferredBroker,
   hasCredentials,
   hasAuthModules,
+  saveCredentials,
+  saveAuthModules,
+  savePreferredBroker,
+  loadCredentials,
+  loadAuthModules,
 } from '../utils/core/config.js';
 import {
   hasClaudeCode,
   hasGemini,
   hasCursor,
 } from '../utils/core/detection.js';
+import {
+  promptEnvironmentId,
+  promptRemainingCredentials,
+  confirmAction,
+} from '../utils/interactive/prompts.js';
 import { handleConfigureLLMBroker } from './configure.js';
 import { handleInitCommand } from './init.js';
 import { handleAddCommand } from './add.js';
@@ -493,73 +512,257 @@ async function invokeCursorAgentHeadless(promptContent, tempFile) {
 }
 
 /**
- * Checks for existing setup and runs init/add flows if needed
+ * Prompts for missing auth credentials only
  */
-async function ensureSetupExists(handler) {
-  const hasExistingCredentials = hasCredentials();
-  const hasExistingModules = hasAuthModules();
+async function promptMissingCredentials(handler) {
+  console.log(chalk.yellow('⚠️  Auth credentials not configured'));
+  console.log(chalk.blue('🔐 Setting up authentication credentials...'));
 
-  // If credentials exist, we can proceed (modules are optional)
-  if (hasExistingCredentials) {
-    // If modules also exist, we're fully set up
-    if (hasExistingModules) {
-      return true;
-    }
-
-    // If only credentials exist but no modules, offer to add modules but don't require it
-    console.log(
-      chalk.yellow(
-        '⚠️  Credentials found but no authentication modules configured.'
-      )
-    );
-    console.log(
-      chalk.cyan(
-        '💡 You can add modules now or proceed with generation (modules can be added later).\n'
-      )
-    );
-
-    console.log(chalk.blue('🔧 Adding authentication modules...'));
-    await handleAddCommand({
-      interactive: true,
-      ...handler.options,
-    });
-
-    // Even if no modules were added, we can still proceed with generation
-    // The original generate logic handles the case of no modules gracefully
-    console.log(chalk.green('\n✅ Proceeding with generation...\n'));
-    return true;
-  }
-
-  // No credentials exist, need full setup
-  console.log(chalk.yellow('⚠️  No existing Locksmith setup found.'));
-  console.log(chalk.cyan("💡 Let's get you set up first...\n"));
-
-  // Run init flow to get credentials
-  console.log(chalk.blue('🔐 Running authentication setup...'));
-  await handleInitCommand({
-    interactive: true,
-    ...handler.options,
-  });
-
-  // Check if init was successful
-  if (!hasCredentials()) {
-    console.log(
-      chalk.red('❌ Setup incomplete. Cannot proceed with generation.')
-    );
+  if (!handler.useInteractive) {
+    console.log(chalk.red('❌ Interactive mode required for credential setup'));
+    console.log(chalk.cyan('💡 Run: locksmith init --interactive'));
     return false;
   }
 
-  // Now try to add modules (optional)
-  console.log(chalk.blue('🔧 Adding authentication modules...'));
-  await handleAddCommand({
-    interactive: true,
-    ...handler.options,
-  });
+  try {
+    // Prompt for environment ID
+    const environmentId = await promptEnvironmentId();
+    if (!environmentId) {
+      console.log(chalk.red('❌ Environment ID is required'));
+      return false;
+    }
 
-  // Even if no modules were added, we can proceed since we have credentials
-  console.log(
-    chalk.green('\n✅ Setup complete! Proceeding with generation...\n')
-  );
+    // Prompt for remaining credentials
+    const remainingCredentials = await promptRemainingCredentials();
+
+    const credentials = {
+      environmentId,
+      ...remainingCredentials,
+    };
+
+    // Confirm and save
+    console.log(chalk.blue('\n📋 Setup Summary:'));
+    console.log(chalk.gray(`  Environment ID: ${credentials.environmentId}`));
+    console.log(chalk.gray(`  Client ID: ${credentials.clientId}`));
+    console.log(chalk.gray(`  Environment URL: ${credentials.environmentUrl}`));
+
+    const shouldSave = await confirmAction(
+      'Save these authentication credentials?'
+    );
+
+    if (!shouldSave) {
+      console.log(chalk.cyan('💡 Setup cancelled'));
+      return false;
+    }
+
+    saveCredentials(credentials);
+    console.log(chalk.green('✅ Auth credentials configured\n'));
+    return true;
+  } catch (error) {
+    console.log(
+      chalk.red(`❌ Failed to collect credentials: ${error.message}`)
+    );
+    return false;
+  }
+}
+
+/**
+ * Prompts for missing callback URI only
+ */
+async function promptMissingCallbackUri(handler) {
+  console.log(chalk.yellow('⚠️  Callback URI not configured'));
+  console.log(chalk.blue('🔧 Configuring callback URI...'));
+
+  if (!handler.useInteractive) {
+    console.log(
+      chalk.red('❌ Interactive mode required for callback URI setup')
+    );
+    console.log(chalk.cyan('💡 Run: locksmith init --interactive'));
+    return false;
+  }
+
+  try {
+    const callbackUri = await promptIfInteractive(
+      handler.useInteractive,
+      'Callback URI (redirect URL for your application):',
+      '',
+      (input) => {
+        if (!input.trim()) return 'Callback URI is required';
+        if (!input.startsWith('http://') && !input.startsWith('https://')) {
+          return 'Callback URI must be a valid HTTP/HTTPS URL';
+        }
+        return true;
+      }
+    );
+
+    if (!callbackUri) {
+      console.log(chalk.red('❌ Callback URI is required'));
+      return false;
+    }
+
+    // Load existing auth modules config and update callback URI
+    const existingModulesConfig = loadAuthModules() || {
+      selectedModules: [],
+      selectedAt: new Date().toISOString(),
+      version: '1.0',
+    };
+    const updatedModulesConfig = {
+      ...existingModulesConfig,
+      callbackUri: callbackUri.trim(),
+    };
+
+    saveAuthModules([], updatedModulesConfig);
+    console.log(chalk.green('✅ Callback URI configured\n'));
+    return true;
+  } catch (error) {
+    console.log(
+      chalk.red(`❌ Failed to configure callback URI: ${error.message}`)
+    );
+    return false;
+  }
+}
+
+/**
+ * Prompts for missing auth modules only
+ */
+async function promptMissingAuthModules(handler) {
+  console.log(chalk.yellow('⚠️  No auth modules configured'));
+  console.log(chalk.blue('🔧 Adding authentication modules...'));
+
+  if (!handler.useInteractive) {
+    console.log(chalk.red('❌ Interactive mode required for module selection'));
+    console.log(chalk.cyan('💡 Run: locksmith add --interactive'));
+    return false;
+  }
+
+  try {
+    const moduleChoices = SUPPORTED_AUTH_MODULES.map((moduleKey) => {
+      const settings = AUTH_MODULE_SETTINGS[moduleKey];
+      if (!settings) {
+        return {
+          name: `${moduleKey} - Unknown module`,
+          value: moduleKey,
+          short: moduleKey,
+          checked: false,
+        };
+      }
+      return {
+        name: `${settings.name} - ${settings.description}`,
+        value: moduleKey,
+        short: settings.name,
+        checked: true,
+      };
+    });
+
+    const selectedModules = await multiselectIfInteractive(
+      handler.useInteractive,
+      'Select authentication modules to add:',
+      moduleChoices,
+      SUPPORTED_AUTH_MODULES,
+      { pageSize: 10 }
+    );
+
+    if (selectedModules.length === 0) {
+      console.log(chalk.yellow('⚠️  No modules selected - proceeding anyway'));
+      return true; // Not a failure, just no modules added
+    }
+
+    saveAuthModules(selectedModules);
+    displaySelectedModules(selectedModules);
+    console.log(chalk.green('✅ Auth modules configured\n'));
+    return true;
+  } catch (error) {
+    console.log(
+      chalk.red(`❌ Failed to configure auth modules: ${error.message}`)
+    );
+    return false;
+  }
+}
+
+/**
+ * Prompts for missing LLM broker only
+ */
+async function promptMissingLLMBroker(handler) {
+  console.log(chalk.yellow('⚠️  No LLM broker configured'));
+  console.log(chalk.blue('🤖 Configuring LLM broker...'));
+
+  if (!handler.useInteractive) {
+    console.log(chalk.red('❌ Interactive mode required for broker selection'));
+    console.log(chalk.cyan('💡 Run: locksmith configure llm --interactive'));
+    return false;
+  }
+
+  try {
+    const brokerChoices = AVAILABLE_BROKERS.map((broker) => ({
+      name: broker,
+      value: broker,
+      short: broker,
+    }));
+
+    const selectedBroker = await selectIfInteractive(
+      handler.useInteractive,
+      'Select your preferred LLM broker:',
+      brokerChoices,
+      AVAILABLE_BROKERS[0] // Default to first broker
+    );
+
+    if (!selectedBroker) {
+      console.log(chalk.red('❌ LLM broker selection is required'));
+      return false;
+    }
+
+    savePreferredBroker(selectedBroker);
+    console.log(chalk.green(`✅ LLM broker configured: ${selectedBroker}\n`));
+    return true;
+  } catch (error) {
+    console.log(
+      chalk.red(`❌ Failed to configure LLM broker: ${error.message}`)
+    );
+    return false;
+  }
+}
+
+/**
+ * Comprehensive setup validation with targeted prompts
+ */
+async function ensureCompleteSetup(handler) {
+  console.log(chalk.blue('🔍 Checking Locksmith setup...\n'));
+
+  // 1. Check auth credentials
+  if (!hasCredentials()) {
+    const success = await promptMissingCredentials(handler);
+    if (!success) {
+      return false;
+    }
+  }
+
+  // 2. Check callback URI
+  const callbackUri = getCallbackUri();
+  if (!callbackUri) {
+    const success = await promptMissingCallbackUri(handler);
+    if (!success) {
+      return false;
+    }
+  }
+
+  // 3. Check auth modules
+  if (!hasAuthModules()) {
+    const success = await promptMissingAuthModules(handler);
+    if (!success) {
+      return false;
+    }
+  }
+
+  // 4. Check LLM broker
+  const preferredBroker = loadPreferredBroker();
+  if (!preferredBroker) {
+    const success = await promptMissingLLMBroker(handler);
+    if (!success) {
+      return false;
+    }
+  }
+
+  console.log(chalk.green('🎉 Setup complete! All prerequisites met.\n'));
   return true;
 }
 
@@ -571,7 +774,6 @@ export async function handleGenerateCommand(options = {}) {
       module: moduleFlag,
       'prompt-out': promptOutPath,
       promptOut,
-      ...otherFlags
     } = options;
 
     handler.showInfo(
@@ -579,13 +781,15 @@ export async function handleGenerateCommand(options = {}) {
       'This will create encrypted configs based on your authentication setup.'
     );
 
-    // Check for existing setup and run init/add flows if needed
-    const setupExists = await ensureSetupExists(handler);
-    if (!setupExists) {
-      return CommandResult.success('Setup cancelled or incomplete');
+    // Ensure all prerequisites are met
+    const setupComplete = await ensureCompleteSetup(handler);
+    if (!setupComplete) {
+      return CommandResult.error(
+        'Setup incomplete - cannot proceed with generation'
+      );
     }
 
-    // 1. Validate and select modules
+    // Get available modules and validate selection
     const savedModules = getAuthModules();
     const moduleValidation = await validateModuleSelection(
       handler,
@@ -596,23 +800,19 @@ export async function handleGenerateCommand(options = {}) {
     if (!moduleValidation.shouldContinue) {
       return moduleValidation.error
         ? CommandResult.error(moduleValidation.error)
-        : CommandResult.success(
-            moduleValidation.message || 'Operation cancelled'
-          );
+        : CommandResult.success('Operation cancelled');
     }
 
     const { selectedModules } = moduleValidation;
 
-    // 3. Build the generation prompt
+    // Build and optionally save the generation prompt
     const combinedPrompt = buildGenerationPrompt(selectedModules);
-
-    // 4. Save prompt to file if requested
     const promptSavePath = promptOutPath || promptOut;
     if (promptSavePath) {
       savePromptToFile(combinedPrompt, promptSavePath);
     }
 
-    // 5. Log generation details
+    // Log generation details
     if (handler.isDryRun()) {
       handler.showWarning('Dry run mode - no files will be created');
     }
@@ -625,7 +825,7 @@ export async function handleGenerateCommand(options = {}) {
       }${callbackUri ? `, Callback URI: ${callbackUri}` : ''}`
     );
 
-    // 6. Handle LLM broker integration
+    // Execute with configured LLM broker
     const preferredBroker = (loadPreferredBroker() || '').toLowerCase();
 
     switch (preferredBroker) {
@@ -639,29 +839,14 @@ export async function handleGenerateCommand(options = {}) {
         await handleCursorAgentIntegration(handler, combinedPrompt, verbose);
         break;
       default:
-        if (preferredBroker) {
-          console.log(
-            chalk.yellow(
-              `⚠️  Broker "${preferredBroker}" is not yet supported for generation.`
-            )
-          );
-          console.log(
-            chalk.cyan(
-              '💡 Supported brokers for generation: claude, gemini, cursor-agent'
-            )
-          );
-        } else {
-          console.log(
-            chalk.yellow(
-              '⚠️  No preferred LLM broker configured. Run: locksmith configure llm'
-            )
-          );
-          console.log(
-            chalk.cyan(
-              '💡 Configure a broker with: locksmith configure llm --interactive'
-            )
-          );
-        }
+        console.log(
+          chalk.yellow(
+            `⚠️  Broker "${preferredBroker}" is not supported for generation.`
+          )
+        );
+        console.log(
+          chalk.cyan('💡 Supported brokers: claude, gemini, cursor-agent')
+        );
         break;
     }
 
