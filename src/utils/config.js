@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import chalk from 'chalk';
 
 const CONFIG_DIR = path.join(os.homedir(), '.locksmith');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'credentials.json');
@@ -24,7 +25,10 @@ export function loadCredentials() {
     const data = fs.readFileSync(CONFIG_FILE, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Error loading credentials:', error.message);
+    console.error(
+      chalk.red('❌ We had trouble reading your stored credentials:'),
+      chalk.gray(error.message)
+    );
     return null;
   }
 }
@@ -36,7 +40,12 @@ export function hasCredentials() {
 export function getCredentials() {
   const credentials = loadCredentials();
   if (!credentials) {
-    console.error('No credentials found. Please run `locksmith init` first.');
+    console.error(chalk.red("❌ No credentials found. Let's get you set up!"));
+    console.log(
+      chalk.cyan('💡 Run ') +
+        chalk.white.bold('locksmith init') +
+        chalk.cyan(' to configure your authentication providers.')
+    );
     process.exit(1);
   }
   return credentials;

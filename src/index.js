@@ -11,12 +11,13 @@ import {
 } from './commands/index.js';
 
 function handleUnknownCommand(command) {
-  console.log(chalk.red(`❌ Unknown command: ${command}`));
+  console.log(chalk.red(`❌ Hmm, "${command}" isn't a command we recognize.`));
   console.log(
-    chalk.gray('Run ') +
+    chalk.cyan('💡 Try running ') +
       chalk.white.bold(`${CLI_CONFIG.name} --help`) +
-      chalk.gray(' to see available commands')
+      chalk.cyan(' to see all available commands.')
   );
+  console.log(chalk.gray('Available commands: init, generate, add'));
   process.exit(1);
 }
 
@@ -42,7 +43,15 @@ async function main() {
     const [command] = cli.input;
     await handleCommand(command);
   } catch (error) {
-    console.error(chalk.red('❌ Error:'), error.message);
+    console.error(
+      chalk.red('❌ Oops! Something unexpected happened:'),
+      error.message
+    );
+    console.log(
+      chalk.cyan('💡 If this persists, try running ') +
+        chalk.white.bold(`${CLI_CONFIG.name} --help`) +
+        chalk.cyan(' or check our GitHub for known issues.')
+    );
     process.exit(1);
   }
 }

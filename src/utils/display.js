@@ -25,10 +25,14 @@ export function displayAsciiTitle() {
 
 export function displayWelcomeBox() {
   const message = boxen(
-    chalk.cyan('🚀 Ready to secure your AI applications!\n') +
-      chalk.gray('Run ') +
-      chalk.white.bold(`${CLI_CONFIG.name} --help`) +
-      chalk.gray(' to get started'),
+    chalk.cyan('🚀 Welcome to Locksmith - Your AI Security Companion!\n\n') +
+      chalk.white(
+        'Secure your AI applications with enterprise-grade authentication.\n'
+      ) +
+      chalk.gray('Get started with: ') +
+      chalk.white.bold(`${CLI_CONFIG.name} init`) +
+      chalk.gray('\n\nNeed help? Run ') +
+      chalk.white.bold(`${CLI_CONFIG.name} --help`),
     {
       padding: 1,
       margin: 1,
