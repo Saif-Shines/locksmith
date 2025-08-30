@@ -3,6 +3,7 @@
   "version": "0.0.2",
   "description": "A CLI tool for developers to seamlessly add authentication infrastructure to AI applications—supports modern auth providers, database schemas, and secrets generation for secure and scalable projects.",
   "main": "index.js",
+  "type": "module",
   "bin": {
     "locksmith": "index.js"
   },
@@ -31,6 +32,8 @@
   "packageManager": "pnpm@10.15.0",
   "dependencies": {
     "boxen": "^8.0.1",
-    "cli-welcome": "^3.0.1"
+    "cli-welcome": "^3.0.1",
+    "ink": "^6.2.3",
+    "react": "^19.1.1"
   }
 }
