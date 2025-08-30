@@ -54,5 +54,8 @@
     "!src/**/*.spec.js",
     "!**/*.log",
     "!**/.*"
-  ]
+  ],
+  "np": {
+    "testScript": false
+  }
 }
