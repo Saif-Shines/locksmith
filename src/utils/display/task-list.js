@@ -20,8 +20,6 @@ const DEFAULT_CONFIG = {
   },
 };
 
-
-
 /**
  * Creates a task list for tool detection workflows
  * @param {boolean} verbose - Whether to show detailed output
