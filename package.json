@@ -30,6 +30,7 @@
   "homepage": "https://saifshines.dev/notes/locksmith-cli/",
   "packageManager": "pnpm@10.15.0",
   "dependencies": {
-    "boxen": "^8.0.1"
+    "boxen": "^8.0.1",
+    "cli-welcome": "^3.0.1"
   }
 }
