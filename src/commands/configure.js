@@ -837,3 +837,5 @@ async function handleConfigureRedirects(options = {}) {
     console.log(chalk.cyan('💡 Or use --verbose flag to see the URL.'));
   }
 }
+
+export { handleConfigureRedirects };

@@ -3,6 +3,7 @@ import {
   selectIfInteractive,
   promptIfInteractive,
   confirmIfInteractive,
+  multiselectIfInteractive,
 } from '../utils/interactive/interactive.js';
 import { CommandHandler, CommandResult } from '../core/command-base.js';
 import { ErrorHandler } from '../core/error-handler.js';
@@ -10,7 +11,9 @@ import {
   SUPPORTED_FORMATS,
   DEFAULT_FORMAT,
   DEFAULT_COUNT,
+  AUTH_MODULE_SETTINGS,
 } from '../core/constants.js';
+import { getAuthModules, getCallbackUri } from '../utils/core/config.js';
 
 export async function handleGenerateCommand(options = {}) {
   return await ErrorHandler.withErrorHandling(async () => {
@@ -21,6 +24,83 @@ export async function handleGenerateCommand(options = {}) {
       'Generating secure configurations for your AI applications...',
       'This will create encrypted configs based on your authentication setup.'
     );
+
+    // Check for saved auth modules
+    const savedModules = getAuthModules();
+    let selectedModules = [];
+
+    if (savedModules.length === 0) {
+      console.log(chalk.yellow('⚠️  No authentication modules configured.'));
+      console.log(chalk.cyan('💡 Add modules first with: locksmith add'));
+      console.log(
+        chalk.cyan(
+          '💡 Or add modules with: locksmith add --module=<module-name>'
+        )
+      );
+      return CommandResult.success('No modules configured');
+    }
+
+    // Interactive module selection from saved modules
+    if (handler.useInteractive) {
+      console.log(chalk.blue('📋 Available Authentication Modules:'));
+      console.log(
+        chalk.gray('  Choose which modules to generate configurations for:')
+      );
+      console.log();
+
+      // Prepare module choices from saved modules
+      const moduleChoices = savedModules.map((moduleKey) => {
+        const settings = AUTH_MODULE_SETTINGS[moduleKey];
+        if (!settings) {
+          return {
+            name: `${moduleKey} - Unknown module`,
+            value: moduleKey,
+            short: moduleKey,
+            checked: false,
+          };
+        }
+        return {
+          name: `${settings.name} - ${settings.description}`,
+          value: moduleKey,
+          short: settings.name,
+          checked: true, // Default all saved modules selected
+        };
+      });
+
+      selectedModules = await multiselectIfInteractive(
+        handler.useInteractive,
+        'Select modules to generate configurations for:',
+        moduleChoices,
+        savedModules, // Default to all saved modules
+        { pageSize: 10 }
+      );
+
+      if (selectedModules.length === 0) {
+        console.log(chalk.yellow('⚠️  No modules selected.'));
+        console.log(
+          chalk.cyan(
+            '💡 Select at least one module to generate configurations.'
+          )
+        );
+        return CommandResult.success('No modules selected');
+      }
+
+      // Show selected modules details
+      console.log(chalk.blue('📋 Selected Modules for Generation:'));
+      selectedModules.forEach((moduleKey) => {
+        const settings = AUTH_MODULE_SETTINGS[moduleKey];
+        if (settings) {
+          console.log(chalk.gray(`  • ${settings.name}`));
+          console.log(chalk.gray(`    ${settings.description}`));
+        } else {
+          console.log(chalk.gray(`  • ${moduleKey} (unknown module)`));
+        }
+      });
+      console.log();
+    } else {
+      // Non-interactive: use all saved modules
+      selectedModules = savedModules;
+    }
 
     // Interactive format selection
     let selectedFormat = format;
@@ -121,16 +201,24 @@ export async function handleGenerateCommand(options = {}) {
       handler.showWarning('Dry run mode - no files will be created');
     }
 
+    // Get callback URI if configured
+    const callbackUri = getCallbackUri();
+
     handler.logVerbose(
       'Generation details:',
-      `Format: ${selectedFormat}, Output: ${
+      `Modules: ${selectedModules.join(
+        ', '
+      )}, Format: ${selectedFormat}, Output: ${
         outputPath || 'stdout'
-      }, Count: ${itemCount}, Dry run: ${handler.isDryRun() ? 'Yes' : 'No'}`
+      }, Count: ${itemCount}, Dry run: ${handler.isDryRun() ? 'Yes' : 'No'}${
+        callbackUri ? `, Callback URI: ${callbackUri}` : ''
+      }`
     );
 
     // Interactive confirmation with detailed summary
     if (handler.useInteractive && !handler.isDryRun()) {
       console.log(chalk.blue('📋 Generation Summary:'));
+      console.log(chalk.gray(`  Modules: ${selectedModules.join(', ')}`));
       console.log(chalk.gray(`  Format: ${selectedFormat.toUpperCase()}`));
       console.log(chalk.gray(`  Output: ${outputPath || 'stdout'}`));
       console.log(
@@ -160,6 +248,8 @@ export async function handleGenerateCommand(options = {}) {
         handler.useInteractive,
         `Ready to generate ${itemCount} configuration${
           itemCount > 1 ? 's' : ''
+        } for ${selectedModules.length} module${
+          selectedModules.length > 1 ? 's' : ''
         }?`,
         true
       );
@@ -188,16 +278,24 @@ export async function handleGenerateCommand(options = {}) {
 
         handler.logVerbose(
           'Generation summary:',
-          `Format: ${selectedFormat}, Output: ${
+          `Modules: ${selectedModules.join(
+            ', '
+          )}, Format: ${selectedFormat}, Output: ${
             outputPath || 'stdout'
-          }, Count: ${itemCount}, Generated at: ${new Date().toISOString()}`
+          }, Count: ${itemCount}, Generated at: ${new Date().toISOString()}${
+            callbackUri ? `, Callback URI: ${callbackUri}` : ''
+          }`
         );
       } else {
         handler.logDryRun(
           'generate configurations',
-          `Format: ${selectedFormat}, Output: ${
+          `Modules: ${selectedModules.join(
+            ', '
+          )}, Format: ${selectedFormat}, Output: ${
             outputPath || 'stdout'
-          }, Count: ${itemCount}`
+          }, Count: ${itemCount}${
+            callbackUri ? `, Callback URI: ${callbackUri}` : ''
+          }`
         );
       }
 
@@ -209,8 +307,15 @@ export async function handleGenerateCommand(options = {}) {
       return CommandResult.success(
         `Successfully ${
           handler.isDryRun() ? 'would generate' : 'generated'
-        } ${itemCount} configuration${itemCount > 1 ? 's' : ''}`,
-        { format: selectedFormat, output: outputPath, count: itemCount }
+        } ${itemCount} configuration${itemCount > 1 ? 's' : ''} for ${
+          selectedModules.length
+        } module${selectedModules.length > 1 ? 's' : ''}`,
+        {
+          modules: selectedModules,
+          format: selectedFormat,
+          output: outputPath,
+          count: itemCount,
+        }
       );
     } catch (error) {
       return handler.handleUnexpectedError(error, 'configuration generation');

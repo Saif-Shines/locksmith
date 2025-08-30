@@ -6,6 +6,7 @@ import chalk from 'chalk';
 const CONFIG_DIR = path.join(os.homedir(), '.locksmith');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'credentials.json');
 const TOOLS_FILE = path.join(CONFIG_DIR, 'llm-brokers.json');
+const AUTH_MODULES_FILE = path.join(CONFIG_DIR, 'auth-modules.json');
 
 export function ensureConfigDir() {
   if (!fs.existsSync(CONFIG_DIR)) {
@@ -106,4 +107,52 @@ export function loadToolDetection() {
 
 export function hasToolDetection() {
   return fs.existsSync(TOOLS_FILE);
+}
+
+export function saveAuthModules(modules, additionalConfig = {}) {
+  ensureConfigDir();
+  const moduleConfig = {
+    selectedModules: modules,
+    selectedAt: new Date().toISOString(),
+    version: '1.0',
+    ...additionalConfig,
+  };
+  fs.writeFileSync(AUTH_MODULES_FILE, JSON.stringify(moduleConfig, null, 2));
+}
+
+export function loadAuthModules() {
+  if (!fs.existsSync(AUTH_MODULES_FILE)) {
+    return null;
+  }
+  try {
+    const data = fs.readFileSync(AUTH_MODULES_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error(
+      chalk.red('❌ We had trouble reading your stored auth modules:'),
+      chalk.gray(error.message)
+    );
+    return null;
+  }
+}
+
+export function hasAuthModules() {
+  return fs.existsSync(AUTH_MODULES_FILE);
+}
+
+export function getAuthModules() {
+  const modules = loadAuthModules();
+  if (!modules) {
+    return [];
+  }
+  return modules.selectedModules || [];
+}
+
+export function getAuthModulesConfig() {
+  return loadAuthModules();
+}
+
+export function getCallbackUri() {
+  const config = loadAuthModules();
+  return config?.callbackUri || null;
 }

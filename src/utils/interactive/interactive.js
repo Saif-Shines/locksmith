@@ -114,6 +114,41 @@ export function shouldUseInteractive(options = {}) {
 }
 
 /**
+ * Prompts user to select multiple items from a list only if interactive mode is enabled
+ * @param {boolean} interactive - Whether interactive mode is enabled
+ * @param {string} question - The question to ask
+ * @param {Array} choices - Array of choices
+ * @param {Array} defaultValues - Default selected values if not interactive
+ * @param {object} options - Additional inquirer options
+ * @returns {Promise<Array>} The selected values or default values
+ */
+export async function multiselectIfInteractive(
+  interactive,
+  question,
+  choices,
+  defaultValues = [],
+  options = {}
+) {
+  if (!interactive) {
+    return defaultValues;
+  }
+
+  const answers = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'values',
+      message: question,
+      choices,
+      default: defaultValues,
+      ...options,
+      prefix: chalk.cyan('📋'),
+    },
+  ]);
+
+  return answers.values;
+}
+
+/**
  * Gets the effective value, preferring explicit values over interactive defaults
  * @param {any} explicitValue - Explicitly provided value
  * @param {any} interactiveDefault - Default value from interactive prompt

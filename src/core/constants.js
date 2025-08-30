@@ -8,6 +8,46 @@ export const SUPPORTED_PROVIDERS = ['scalekit', 'auth0', 'fusionauth'];
 
 export const SUPPORTED_AUTH_MODULES = ['full-stack-auth', 'sso', 'mcp'];
 
+export const AUTH_MODULE_SETTINGS = {
+  'full-stack-auth': {
+    name: 'Full Stack Authentication',
+    description:
+      'Complete authentication system with login, signup, password reset, and session management',
+    features: [
+      'User registration',
+      'Login/logout',
+      'Password reset',
+      'Session management',
+      'Profile management',
+    ],
+    available: true,
+  },
+  sso: {
+    name: 'Single Sign-On (SSO)',
+    description:
+      'Enterprise SSO integration with SAML, OAuth, and custom identity providers',
+    features: [
+      'SAML integration',
+      'OAuth flows',
+      'Multi-tenant support',
+      'Custom IDP support',
+    ],
+    available: true,
+  },
+  mcp: {
+    name: 'Model Context Protocol',
+    description:
+      'Secure authentication for AI model interactions and context management',
+    features: [
+      'Model authentication',
+      'Context validation',
+      'Token management',
+      'Secure API access',
+    ],
+    available: true,
+  },
+};
+
 // LLM Brokers
 export const AVAILABLE_BROKERS = ['gemini', 'claude', 'cursor-agent'];
 export const DEFAULT_BROKER = 'gemini';
