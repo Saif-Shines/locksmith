@@ -316,7 +316,7 @@ async function handleConfigureLLMBroker(options = {}) {
       }
 
       console.log(
-        chalk.gray('📁 Configuration saved to ~/.locksmith/tools.json')
+        chalk.gray('📁 Configuration saved to ~/.locksmith/llm-brokers.json')
       );
     } else {
       console.log(

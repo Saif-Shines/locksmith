@@ -5,7 +5,7 @@ import chalk from 'chalk';
 
 const CONFIG_DIR = path.join(os.homedir(), '.locksmith');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'credentials.json');
-const TOOLS_FILE = path.join(CONFIG_DIR, 'tools.json');
+const TOOLS_FILE = path.join(CONFIG_DIR, 'llm-brokers.json');
 
 export function ensureConfigDir() {
   if (!fs.existsSync(CONFIG_DIR)) {
