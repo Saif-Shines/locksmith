@@ -20,10 +20,14 @@ import {
   getCallbackUri,
   loadPreferredBroker,
 } from '../utils/core/config.js';
-import { hasClaudeCode } from '../utils/core/detection.js';
+import {
+  hasClaudeCode,
+  hasGemini,
+  hasCursor,
+} from '../utils/core/detection.js';
 import { handleConfigureLLMBroker } from './configure.js';
 
-// Constants for Claude integration
+// Constants for LLM integrations
 const CLAUDE_PROMPT_LIMIT = 8000;
 const CLAUDE_MAX_LIMIT = 10000;
 const TEMP_FILE_PREFIX = 'locksmith-prompt-';
@@ -232,25 +236,6 @@ function cleanupTempFiles(tempFile) {
  * Handles Claude CLI integration
  */
 async function handleClaudeIntegration(handler, prompt, verbose) {
-  const preferredBroker = (loadPreferredBroker() || '').toLowerCase();
-
-  if (preferredBroker !== 'claude') {
-    if (preferredBroker) {
-      console.log(
-        chalk.yellow(
-          `⚠️  Broker "${preferredBroker}" not yet supported here. Claude only for now.`
-        )
-      );
-    } else {
-      console.log(
-        chalk.yellow(
-          '⚠️  No preferred LLM broker configured. Run: locksmith configure llm'
-        )
-      );
-    }
-    return;
-  }
-
   const claudeAvailable = hasClaudeCode();
   if (!claudeAvailable) {
     console.log(
@@ -348,6 +333,200 @@ async function invokeClaudeHeadless(promptContent, tempFile) {
   });
 }
 
+/**
+ * Handles Gemini CLI integration
+ */
+async function handleGeminiIntegration(handler, prompt, verbose) {
+  const geminiAvailable = hasGemini();
+  if (!geminiAvailable) {
+    console.log(
+      chalk.yellow(
+        '⚠️  Gemini CLI not detected. Launching broker configuration...'
+      )
+    );
+    await handleConfigureLLMBroker({
+      interactive: true,
+      verbose: !!verbose,
+    });
+  }
+
+  const geminiStillAvailable = hasGemini();
+  if (!geminiStillAvailable) {
+    console.log(
+      chalk.red('❌ Gemini CLI still not available. Skipping invocation.')
+    );
+    return;
+  }
+
+  if (handler.isDryRun()) {
+    console.log(chalk.yellow('⚠️  Dry run mode - Gemini invocation skipped'));
+    return;
+  }
+
+  console.log(chalk.cyan('🤖 Invoking Gemini with the combined prompt...'));
+
+  const tempFile = createTempPromptFile(prompt);
+  const promptContent = fs.readFileSync(tempFile, 'utf8');
+  const isInteractive = process.stdout.isTTY && process.stdin.isTTY;
+
+  try {
+    if (isInteractive) {
+      await invokeGeminiInteractive(
+        promptContent,
+        tempFile,
+        handler.useInteractive
+      );
+    } else {
+      await invokeGeminiHeadless(promptContent, tempFile);
+    }
+  } catch (e) {
+    console.log(chalk.gray('💡 Gemini session ended'));
+  } finally {
+    cleanupTempFiles(tempFile);
+  }
+}
+
+/**
+ * Invokes Gemini in interactive mode
+ */
+async function invokeGeminiInteractive(
+  promptContent,
+  tempFile,
+  useInteractive
+) {
+  console.log(chalk.cyan('🚀 Starting Gemini in interactive mode...'));
+  console.log(chalk.gray('💡 Gemini will process the prompt and show results'));
+
+  const args = ['-p', promptContent];
+
+  // Debug log: Show the Gemini command being invoked
+  console.log(chalk.gray(`🔧 Debug: Invoking: gemini ${args.join(' ')}`));
+
+  await execa('gemini', args, { stdio: 'inherit' });
+}
+
+/**
+ * Invokes Gemini in headless mode
+ */
+async function invokeGeminiHeadless(promptContent, tempFile) {
+  console.log(chalk.yellow('⚠️  Non-interactive environment detected'));
+  console.log(chalk.gray('💡 Using headless mode with prompt'));
+
+  const args = ['-p', promptContent];
+
+  // Debug log: Show the Gemini command being invoked
+  console.log(chalk.gray(`🔧 Debug: Invoking: gemini ${args.join(' ')}`));
+
+  await execa('gemini', args, {
+    stdio: 'inherit',
+  });
+}
+
+/**
+ * Handles Cursor Agent CLI integration
+ */
+async function handleCursorAgentIntegration(handler, prompt, verbose) {
+  const cursorAvailable = hasCursor();
+  if (!cursorAvailable) {
+    console.log(
+      chalk.yellow(
+        '⚠️  Cursor Agent not detected. Launching broker configuration...'
+      )
+    );
+    await handleConfigureLLMBroker({
+      interactive: true,
+      verbose: !!verbose,
+    });
+  }
+
+  const cursorStillAvailable = hasCursor();
+  if (!cursorStillAvailable) {
+    console.log(
+      chalk.red('❌ Cursor Agent still not available. Skipping invocation.')
+    );
+    return;
+  }
+
+  if (handler.isDryRun()) {
+    console.log(
+      chalk.yellow('⚠️  Dry run mode - Cursor Agent invocation skipped')
+    );
+    return;
+  }
+
+  console.log(
+    chalk.cyan('🤖 Invoking Cursor Agent with the combined prompt...')
+  );
+
+  const tempFile = createTempPromptFile(prompt);
+  const promptContent = fs.readFileSync(tempFile, 'utf8');
+  const isInteractive = process.stdout.isTTY && process.stdin.isTTY;
+
+  try {
+    if (isInteractive) {
+      await invokeCursorAgentInteractive(
+        promptContent,
+        tempFile,
+        handler.useInteractive
+      );
+    } else {
+      await invokeCursorAgentHeadless(promptContent, tempFile);
+    }
+  } catch (e) {
+    console.log(chalk.gray('💡 Cursor Agent session ended'));
+  } finally {
+    cleanupTempFiles(tempFile);
+  }
+}
+
+/**
+ * Invokes Cursor Agent in interactive mode
+ */
+async function invokeCursorAgentInteractive(
+  promptContent,
+  tempFile,
+  useInteractive
+) {
+  console.log(chalk.cyan('🚀 Starting Cursor Agent in interactive mode...'));
+  console.log(
+    chalk.gray('💡 Cursor Agent will process the prompt and show results')
+  );
+
+  // For cursor-agent, we pass the prompt directly as the argument
+  const args = [promptContent];
+
+  // Debug log: Show the Cursor Agent command being invoked
+  console.log(
+    chalk.gray(
+      `🔧 Debug: Invoking: cursor-agent "${promptContent.substring(0, 50)}..."`
+    )
+  );
+
+  await execa('cursor-agent', args, { stdio: 'inherit' });
+}
+
+/**
+ * Invokes Cursor Agent in headless mode
+ */
+async function invokeCursorAgentHeadless(promptContent, tempFile) {
+  console.log(chalk.yellow('⚠️  Non-interactive environment detected'));
+  console.log(chalk.gray('💡 Using headless mode with prompt'));
+
+  // For cursor-agent, we pass the prompt directly as the argument
+  const args = [promptContent];
+
+  // Debug log: Show the Cursor Agent command being invoked
+  console.log(
+    chalk.gray(
+      `🔧 Debug: Invoking: cursor-agent "${promptContent.substring(0, 50)}..."`
+    )
+  );
+
+  await execa('cursor-agent', args, {
+    stdio: 'inherit',
+  });
+}
+
 export async function handleGenerateCommand(options = {}) {
   return await ErrorHandler.withErrorHandling(async () => {
     const handler = new CommandHandler(options);
@@ -428,8 +607,45 @@ export async function handleGenerateCommand(options = {}) {
       }`
     );
 
-    // 6. Handle Claude integration
-    await handleClaudeIntegration(handler, combinedPrompt, verbose);
+    // 6. Handle LLM broker integration
+    const preferredBroker = (loadPreferredBroker() || '').toLowerCase();
+
+    switch (preferredBroker) {
+      case 'claude':
+        await handleClaudeIntegration(handler, combinedPrompt, verbose);
+        break;
+      case 'gemini':
+        await handleGeminiIntegration(handler, combinedPrompt, verbose);
+        break;
+      case 'cursor-agent':
+        await handleCursorAgentIntegration(handler, combinedPrompt, verbose);
+        break;
+      default:
+        if (preferredBroker) {
+          console.log(
+            chalk.yellow(
+              `⚠️  Broker "${preferredBroker}" is not yet supported for generation.`
+            )
+          );
+          console.log(
+            chalk.cyan(
+              '💡 Supported brokers for generation: claude, gemini, cursor-agent'
+            )
+          );
+        } else {
+          console.log(
+            chalk.yellow(
+              '⚠️  No preferred LLM broker configured. Run: locksmith configure llm'
+            )
+          );
+          console.log(
+            chalk.cyan(
+              '💡 Configure a broker with: locksmith configure llm --interactive'
+            )
+          );
+        }
+        break;
+    }
 
     return CommandResult.success('Generation process completed');
   }, 'generate');
