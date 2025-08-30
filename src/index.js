@@ -6,6 +6,7 @@ import { initializeCli } from './utils/cli.js';
 import { showMainInterface } from './utils/display.js';
 import {
   handleInitCommand,
+  handleConfigureCommand,
   handleAddCommand,
   handleGenerateCommand,
 } from './commands/index.js';
@@ -17,19 +18,34 @@ function handleUnknownCommand(command) {
       chalk.white.bold(`${CLI_CONFIG.name} --help`) +
       chalk.cyan(' to see all available commands.')
   );
-  console.log(chalk.gray('Available commands: init, generate, add'));
+  console.log(chalk.gray('Available commands: init, configure, generate, add'));
   process.exit(1);
 }
 
-async function handleCommand(command) {
+async function handleCommand(cli) {
+  const [command, subcommand] = cli.input;
+  const flags = cli.flags;
+
+  // If help flag is set, let meow handle it (it will exit the process)
+  if (flags.help) {
+    return;
+  }
+
   const commandHandlers = {
     init: handleInitCommand,
+    configure: handleConfigureCommand,
     add: handleAddCommand,
     generate: handleGenerateCommand,
   };
 
-  if (commandHandlers[command]) {
-    await commandHandlers[command]();
+  // Handle subcommands
+  if (command === 'init' && subcommand === 'auth') {
+    await handleInitCommand({ ...flags, interactive: true });
+  } else if (command === 'configure' && subcommand === 'auth') {
+    await handleConfigureCommand({ subcommand: 'auth', ...flags });
+  } else if (commandHandlers[command]) {
+    // Pass flags to command handlers
+    await commandHandlers[command](flags);
   } else if (!command) {
     showMainInterface();
   } else {
@@ -40,8 +56,7 @@ async function handleCommand(command) {
 async function main() {
   try {
     const cli = initializeCli();
-    const [command] = cli.input;
-    await handleCommand(command);
+    await handleCommand(cli);
   } catch (error) {
     console.error(
       chalk.red('❌ Oops! Something unexpected happened:'),

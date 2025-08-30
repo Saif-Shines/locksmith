@@ -8,11 +8,82 @@ export const CLI_CONFIG = {
 };
 
 export const COMMANDS = {
-  init: { desc: 'Initialize authentication in your project' },
+  init: {
+    desc: 'Initialize authentication in your project (interactive)',
+    subcommands: {
+      auth: { desc: 'Configure authentication providers' },
+    },
+  },
+  configure: {
+    desc: 'Configure authentication settings',
+    subcommands: {
+      auth: { desc: 'Configure auth provider settings' },
+    },
+  },
   add: { desc: 'Add authentication providers' },
   generate: { desc: 'Generate secrets and configs' },
 };
 
+// Boolean flags for modes
+export const MODE_FLAGS = {
+  dryRun: {
+    type: 'boolean',
+    desc: 'Show what would be done without doing it',
+    shortFlag: 'd',
+  },
+  verbose: {
+    type: 'boolean',
+    desc: 'Show detailed output',
+    shortFlag: 'v',
+  },
+  force: {
+    type: 'boolean',
+    desc: 'Skip confirmation prompts',
+    shortFlag: 'f',
+  },
+  interactive: {
+    type: 'boolean',
+    desc: 'Run in interactive mode',
+    shortFlag: 'i',
+  },
+};
+
+// Value flags
+export const VALUE_FLAGS = {
+  provider: {
+    type: 'string',
+    desc: 'Authentication provider (scalekit, auth0, fusionauth)',
+    shortFlag: 'p',
+  },
+  output: {
+    type: 'string',
+    desc: 'Output file path',
+    shortFlag: 'o',
+  },
+  format: {
+    type: 'string',
+    desc: 'Output format',
+    choices: ['json', 'yaml', 'env'],
+    shortFlag: 'F',
+  },
+  count: {
+    type: 'number',
+    desc: 'Number of items to generate',
+    shortFlag: 'n',
+  },
+  key: {
+    type: 'string',
+    desc: 'Configuration key to set',
+    shortFlag: 'k',
+  },
+  value: {
+    type: 'string',
+    desc: 'Configuration value to set',
+    shortFlag: 'V',
+  },
+};
+
+// Global flags (available for all commands)
 export const FLAGS = {
   version: {
     desc: 'Show version number',
@@ -24,6 +95,10 @@ export const FLAGS = {
     type: 'boolean',
     shortFlag: 'h',
   },
+  // Include all mode flags
+  ...MODE_FLAGS,
+  // Include all value flags
+  ...VALUE_FLAGS,
 };
 
 export const ASCII_CONFIG = {

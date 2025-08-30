@@ -10,7 +10,7 @@ import {
 
 const SCALEKIT_LOGIN_URL = 'https://auth.scalekit.cloud/a/auth/login';
 
-export async function handleInitCommand() {
+export async function handleInitCommand(options = {}) {
   console.log(
     chalk.green(
       "🚀 Welcome to Locksmith! Let's secure your AI applications together...\n"

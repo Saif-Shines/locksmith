@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-export function handleAddCommand() {
+export function handleAddCommand(options = {}) {
   console.log(
     chalk.green('🔧 Adding more authentication providers to your setup...')
   );

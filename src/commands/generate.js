@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-export function handleGenerateCommand() {
+export function handleGenerateCommand(options = {}) {
   console.log(
     chalk.green(
       '🔑 Generating secure configurations for your AI applications...'
