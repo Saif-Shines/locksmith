@@ -52,11 +52,6 @@ export const AUTH_MODULE_SETTINGS = {
 export const AVAILABLE_BROKERS = ['gemini', 'claude', 'cursor-agent'];
 export const DEFAULT_BROKER = 'gemini';
 
-// Configuration Formats
-export const SUPPORTED_FORMATS = ['json', 'yaml', 'env'];
-export const DEFAULT_FORMAT = 'json';
-export const DEFAULT_COUNT = 1;
-
 // URLs and Endpoints
 export const SCALEKIT_LOGIN_URL = 'https://auth.scalekit.cloud/a/auth/login';
 
@@ -105,14 +100,6 @@ export const VALIDATION_PATTERNS = {
   environmentId: /^[a-zA-Z0-9_-]+$/,
   clientId: /^[a-zA-Z0-9_-]+$/,
   url: /^https?:\/\/.+$/,
-};
-
-// File extensions for formats
-export const FORMAT_EXTENSIONS = {
-  json: '.json',
-  yaml: '.yaml',
-  yml: '.yml',
-  env: '.env',
 };
 
 // Exit codes

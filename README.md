@@ -163,9 +163,6 @@ locksmith generate
 # Generate specific module
 locksmith generate --module=full-stack-auth
 
-# Generate with custom output
-locksmith generate --format=yaml --output=./config/auth.yaml
-
 # Save prompt for review
 locksmith generate --prompt-out=./prompt.txt
 ```
@@ -173,9 +170,6 @@ locksmith generate --prompt-out=./prompt.txt
 **Flags:**
 
 - `--module` - Specific module to generate
-- `--format, -F` - Output format (json, yaml, env)
-- `--output, -o` - Output file path
-- `--count, -n` - Number of configurations to generate
 - `--prompt-out` - Save generation prompt to file
 - `--verbose, -v` - Show detailed output
 - `--dry-run, -d` - Show what would be done
@@ -272,7 +266,7 @@ locksmith configure llm --broker=claude
 locksmith add --module=full-stack-auth --module=sso
 
 # 4. Generate configurations
-locksmith generate --format=json --output=./auth-config.json
+locksmith generate
 ```
 
 ### CI/CD Integration
@@ -288,7 +282,7 @@ locksmith init \
   --no-interactive
 
 # Generate configs in CI
-locksmith generate --format=env --output=.env.auth
+locksmith generate
 ```
 
 ### Development Workflow
@@ -313,7 +307,6 @@ locksmith generate --verbose --module=full-stack-auth
 - LLM broker integration (Claude, Gemini, Cursor Agent)
 - Multiple authentication modules
 - Secure credential management
-- JSON/YAML/ENV output formats
 
 ### 🚧 In Progress
 

@@ -66,11 +66,8 @@ export function generateHelpText() {
   ${chalk.cyan('$ locksmith generate')}                      ${chalk.gray(
     'Interactive config generation'
   )}
-  ${chalk.cyan('$ locksmith generate --format=json --count=5')} ${chalk.gray(
-    'Generate 5 JSON configs'
-  )}
   ${chalk.cyan('$ locksmith generate --interactive')}       ${chalk.gray(
-    'Interactive format/output selection'
+    'Interactive module selection'
   )}
 
   ${chalk.cyan('$ locksmith configure llm --broker=gemini')}  ${chalk.gray(

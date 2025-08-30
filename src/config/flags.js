@@ -40,22 +40,7 @@ export const VALUE_FLAGS = {
     desc: 'Output file path',
     shortFlag: 'o',
   },
-  format: {
-    type: 'string',
-    desc: 'Output format',
-    choices: ['json', 'yaml', 'env'],
-    shortFlag: 'F',
-  },
-  count: {
-    type: 'number',
-    desc: 'Number of items to generate',
-    shortFlag: 'n',
-  },
-  key: {
-    type: 'string',
-    desc: 'Configuration key to set',
-    shortFlag: 'k',
-  },
+
   value: {
     type: 'string',
     desc: 'Configuration value to set',

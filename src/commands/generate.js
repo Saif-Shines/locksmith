@@ -8,13 +8,7 @@ import path from 'path';
 import { multiselectIfInteractive } from '../utils/interactive/interactive.js';
 import { CommandHandler, CommandResult } from '../core/command-base.js';
 import { ErrorHandler } from '../core/error-handler.js';
-import {
-  SUPPORTED_FORMATS,
-  DEFAULT_FORMAT,
-  DEFAULT_COUNT,
-  AUTH_MODULE_SETTINGS,
-  AUTH_MODULE_GUIDES,
-} from '../core/constants.js';
+import { AUTH_MODULE_SETTINGS, AUTH_MODULE_GUIDES } from '../core/constants.js';
 import {
   getAuthModules,
   getCallbackUri,
@@ -155,39 +149,6 @@ function buildGenerationPrompt(selectedModules) {
     AUTH_MODULE_GUIDES[primaryModule] || AUTH_MODULE_GUIDES['full-stack-auth'];
 
   return `Integrate Scalekit into your technology stack by intelligently analyzing your project environment, including secrets and configuration found in your \`~/.locksmith\` directory. Reference the [FSA Quickstart guide](${guideUrl}) for step-by-step integration, ensuring correct SDK installation, secure environment variable management, and robust authentication flow implementation. Adapt all instructions to fit your project's conventions for maximum reliability and security, and request any missing context if your tech stack or token management details are unclear.`;
-}
-
-/**
- * Validates generation options (format, count, output)
- */
-function validateGenerationOptions(handler, format, output, count) {
-  const selectedFormat = format || DEFAULT_FORMAT;
-
-  if (!SUPPORTED_FORMATS.includes(selectedFormat.toLowerCase())) {
-    return {
-      isValid: false,
-      error: `Unsupported format: ${selectedFormat}. Supported: ${SUPPORTED_FORMATS.join(
-        ', '
-      )}`,
-    };
-  }
-
-  const itemCount = count || DEFAULT_COUNT;
-  if (isNaN(itemCount) || itemCount < 1) {
-    return {
-      isValid: false,
-      error: 'Count must be a positive number.',
-    };
-  }
-
-  return {
-    isValid: true,
-    options: {
-      format: selectedFormat,
-      output: output,
-      count: itemCount,
-    },
-  };
 }
 
 /**
@@ -606,9 +567,6 @@ export async function handleGenerateCommand(options = {}) {
   return await ErrorHandler.withErrorHandling(async () => {
     const handler = new CommandHandler(options);
     const {
-      format,
-      output,
-      count,
       verbose,
       module: moduleFlag,
       'prompt-out': promptOutPath,
@@ -645,23 +603,6 @@ export async function handleGenerateCommand(options = {}) {
 
     const { selectedModules } = moduleValidation;
 
-    // 2. Validate generation options
-    const optionsValidation = validateGenerationOptions(
-      handler,
-      format,
-      output,
-      count
-    );
-    if (!optionsValidation.isValid) {
-      return handler.handleValidationError(optionsValidation.error);
-    }
-
-    const {
-      format: selectedFormat,
-      output: outputPath,
-      count: itemCount,
-    } = optionsValidation.options;
-
     // 3. Build the generation prompt
     const combinedPrompt = buildGenerationPrompt(selectedModules);
 
@@ -679,13 +620,9 @@ export async function handleGenerateCommand(options = {}) {
     const callbackUri = getCallbackUri();
     handler.logVerbose(
       'Generation details:',
-      `Modules: ${selectedModules.join(
-        ', '
-      )}, Format: ${selectedFormat}, Output: ${
-        outputPath || 'stdout'
-      }, Count: ${itemCount}, Dry run: ${handler.isDryRun() ? 'Yes' : 'No'}${
-        callbackUri ? `, Callback URI: ${callbackUri}` : ''
-      }`
+      `Modules: ${selectedModules.join(', ')}, Dry run: ${
+        handler.isDryRun() ? 'Yes' : 'No'
+      }${callbackUri ? `, Callback URI: ${callbackUri}` : ''}`
     );
 
     // 6. Handle LLM broker integration
