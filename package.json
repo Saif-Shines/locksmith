@@ -28,5 +28,8 @@
     "url": "https://github.com/Saif-Shines/locksmith/issues"
   },
   "homepage": "https://saifshines.dev/notes/locksmith-cli/",
-  "packageManager": "pnpm@10.15.0"
+  "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "boxen": "^8.0.1"
+  }
 }
