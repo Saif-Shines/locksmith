@@ -13,6 +13,7 @@ import {
   DEFAULT_FORMAT,
   DEFAULT_COUNT,
   AUTH_MODULE_SETTINGS,
+  AUTH_MODULE_GUIDES,
 } from '../core/constants.js';
 import {
   getAuthModules,
@@ -135,35 +136,17 @@ function displaySelectedModules(selectedModules) {
 }
 
 /**
- * Builds the combined generation prompt from templates and config
+ * Builds the simplified generation prompt with guide URL based on selected modules
  */
-function buildGenerationPrompt() {
-  let combinedPrompt = '';
+function buildGenerationPrompt(selectedModules) {
+  // Use the first selected module to determine the guide URL
+  // If multiple modules selected, default to full-stack-auth
+  const primaryModule =
+    selectedModules.length > 0 ? selectedModules[0] : 'full-stack-auth';
+  const guideUrl =
+    AUTH_MODULE_GUIDES[primaryModule] || AUTH_MODULE_GUIDES['full-stack-auth'];
 
-  try {
-    const templateUrl =
-      'https://raw.githubusercontent.com/scalekit-inc/developer-docs/refs/heads/main/src/components/templates/prompts/fsa-quickstart.mdx';
-
-    combinedPrompt += '=== Template: fsa-quickstart.mdx (link) ===\n';
-    combinedPrompt += templateUrl + '\n\n';
-
-    const configDir = path.join(os.homedir(), '.locksmith');
-    const authModulesPath = path.join(configDir, 'auth-modules.json');
-
-    if (fs.existsSync(authModulesPath)) {
-      combinedPrompt += '=== Locksmith Config Files ===\n';
-      try {
-        const content = fs.readFileSync(authModulesPath, 'utf8');
-        combinedPrompt += `\n--- auth-modules.json ---\n` + content + '\n';
-      } catch {
-        // ignore file read errors
-      }
-    }
-  } catch (e) {
-    console.log(chalk.yellow(`⚠️  Failed to build prompt: ${e?.message || e}`));
-  }
-
-  return combinedPrompt;
+  return `Integrate Scalekit into your technology stack by intelligently analyzing your project environment, including secrets and configuration found in your \`~/.locksmith\` directory. Reference the [FSA Quickstart guide](${guideUrl}) for step-by-step integration, ensuring correct SDK installation, secure environment variable management, and robust authentication flow implementation. Adapt all instructions to fit your project's conventions for maximum reliability and security, and request any missing context if your tech stack or token management details are unclear.`;
 }
 
 /**
@@ -332,16 +315,13 @@ async function invokeClaudeInteractive(
 
   const args = ['--permission-mode', 'plan'];
 
-  // In interactive mode (default), don't pass -p flag - let Claude prompt for input
-  // In non-interactive mode but still TTY, pass the prompt via -p flag
-  if (!useInteractive) {
-    if (promptContent.length < CLAUDE_PROMPT_LIMIT) {
-      args.push('-p', promptContent);
-    } else {
-      const promptWithFile = `${promptContent}\n\nNote: For additional context, also check: ${tempFile}`;
-      args.push('-p', promptWithFile);
-    }
+  // Pass the temp file containing the prompt
+  if (tempFile) {
+    args.push(tempFile);
   }
+
+  // Debug log: Show the Claude command being invoked
+  console.log(chalk.gray(`🔧 Debug: Invoking: claude ${args.join(' ')}`));
 
   await execa('claude', args, { stdio: 'inherit' });
 }
@@ -353,12 +333,17 @@ async function invokeClaudeHeadless(promptContent, tempFile) {
   console.log(chalk.yellow('⚠️  Non-interactive environment detected'));
   console.log(chalk.gray('💡 Using headless mode with prompt'));
 
-  const promptArg =
-    promptContent.length < CLAUDE_MAX_LIMIT
-      ? promptContent
-      : `Read and follow the prompt from this file: ${tempFile}`;
+  const args = ['--permission-mode', 'plan'];
 
-  await execa('claude', ['--permission-mode', 'plan', '-p', promptArg], {
+  // Pass the temp file containing the prompt
+  if (tempFile) {
+    args.push(tempFile);
+  }
+
+  // Debug log: Show the Claude command being invoked
+  console.log(chalk.gray(`🔧 Debug: Invoking: claude ${args.join(' ')}`));
+
+  await execa('claude', args, {
     stdio: 'inherit',
   });
 }
@@ -418,7 +403,7 @@ export async function handleGenerateCommand(options = {}) {
     } = optionsValidation.options;
 
     // 3. Build the generation prompt
-    const combinedPrompt = buildGenerationPrompt();
+    const combinedPrompt = buildGenerationPrompt(selectedModules);
 
     // 4. Save prompt to file if requested
     const promptSavePath = promptOutPath || promptOut;

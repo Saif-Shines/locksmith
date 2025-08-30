@@ -131,3 +131,11 @@ export const MESSAGES = {
   VERBOSE_MODE: 'Verbose mode enabled',
   INTERACTIVE_CANCELLED: 'Operation cancelled by user',
 };
+
+// Auth module guide URLs
+export const AUTH_MODULE_GUIDES = {
+  'full-stack-auth':
+    'https://raw.githubusercontent.com/scalekit-inc/developer-docs/refs/heads/main/src/components/templates/prompts/fsa-quickstart.mdx',
+  sso: 'https://raw.githubusercontent.com/scalekit-inc/developer-docs/refs/heads/main/src/components/templates/prompts/sso-guide.mdx',
+  mcp: 'https://raw.githubusercontent.com/scalekit-inc/developer-docs/refs/heads/main/src/components/templates/prompts/mcp-guide.mdx',
+};
