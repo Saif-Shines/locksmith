@@ -44,5 +44,15 @@
     "meow": "^13.2.0",
     "open": "^10.2.0",
     "react": "^19.1.1"
-  }
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "README.md",
+    "LICENSE",
+    "!src/**/*.test.js",
+    "!src/**/*.spec.js",
+    "!**/*.log",
+    "!**/.*"
+  ]
 }
