@@ -1,6 +1,6 @@
 {
   "name": "locksmith-cli",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A CLI tool for developers to seamlessly add authentication infrastructure to AI applications—supports modern auth providers, database schemas, and secrets generation for secure and scalable projects.",
   "main": "index.js",
   "type": "module",
