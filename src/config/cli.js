@@ -1,6 +1,8 @@
+import packageJson from '../../package.json' with { type: 'json' };
+
 export const CLI_CONFIG = {
   name: 'locksmith',
-  version: '0.0.2',
+  version: packageJson.version,
   description:
     'Seamlessly add authentication infrastructure to AI applications',
   homepage: 'https://saifshines.dev/notes/locksmith-cli/',

@@ -18,6 +18,7 @@ export const MODE_FLAGS = {
   interactive: {
     type: 'boolean',
     desc: 'Run in interactive mode',
+    default: true,
     shortFlag: 'i',
   },
   noInteractive: {
