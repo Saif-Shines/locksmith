@@ -838,4 +838,4 @@ async function handleConfigureRedirects(options = {}) {
   }
 }
 
-export { handleConfigureRedirects };
+export { handleConfigureRedirects, handleConfigureLLMBroker };

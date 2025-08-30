@@ -13,12 +13,32 @@ import {
   DEFAULT_COUNT,
   AUTH_MODULE_SETTINGS,
 } from '../core/constants.js';
-import { getAuthModules, getCallbackUri } from '../utils/core/config.js';
+import {
+  getAuthModules,
+  getCallbackUri,
+  loadPreferredBroker,
+} from '../utils/core/config.js';
+import { hasClaudeCode } from '../utils/core/detection.js';
+import { execa } from 'execa';
+import { handleConfigureLLMBroker } from './configure.js';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import https from 'https';
+import { spawn } from 'child_process';
 
 export async function handleGenerateCommand(options = {}) {
   return await ErrorHandler.withErrorHandling(async () => {
     const handler = new CommandHandler(options);
-    const { format, output, count, dryRun, verbose, ...otherFlags } = options;
+    const {
+      format,
+      output,
+      count,
+      dryRun,
+      verbose,
+      module: moduleFlag,
+      ...otherFlags
+    } = options;
 
     handler.showInfo(
       'Generating secure configurations for your AI applications...',
@@ -40,8 +60,25 @@ export async function handleGenerateCommand(options = {}) {
       return CommandResult.success('No modules configured');
     }
 
-    // Interactive module selection from saved modules
-    if (handler.useInteractive) {
+    // If module flag provided, validate against saved modules
+    if (moduleFlag) {
+      const normalized = String(moduleFlag).toLowerCase();
+      if (!savedModules.includes(normalized)) {
+        console.log(chalk.red(`❌ Module not configured: ${moduleFlag}`));
+        console.log(
+          chalk.cyan('💡 Configured modules:'),
+          chalk.white(savedModules.join(', ') || 'none')
+        );
+        console.log(
+          chalk.cyan(
+            '💡 Add modules with: locksmith add auth --module=<module-name>'
+          )
+        );
+        return CommandResult.error(`Module not configured: ${moduleFlag}`);
+      }
+      selectedModules = [normalized];
+    } else if (handler.useInteractive) {
+      // Interactive module selection from saved modules
       console.log(chalk.blue('📋 Available Authentication Modules:'));
       console.log(
         chalk.gray('  Choose which modules to generate configurations for:')
@@ -102,59 +139,81 @@ export async function handleGenerateCommand(options = {}) {
       selectedModules = savedModules;
     }
 
-    // Interactive format selection
-    let selectedFormat = format;
-    if (!selectedFormat) {
-      if (handler.useInteractive) {
-        const formatChoices = SUPPORTED_FORMATS.map((f) => {
-          const isDefault = f === DEFAULT_FORMAT;
-          let description, name;
-
-          switch (f) {
-            case 'json':
-              name = `${f.toUpperCase()} format ${
-                isDefault ? '(recommended)' : ''
-              }`;
-              description =
-                'Structured data format, great for programmatic use';
-              break;
-            case 'yaml':
-              name = `${f.toUpperCase()} format`;
-              description = 'Human-readable configuration format';
-              break;
-            case 'env':
-              name = `${f.toUpperCase()} format`;
-              description = 'Environment variables format for shell scripts';
-              break;
-            default:
-              name = `${f.toUpperCase()} format`;
-              description = `${f.toUpperCase()} configuration format`;
-          }
-
-          return {
-            name,
-            value: f,
-            short: f,
-            description,
-          };
-        });
-
-        console.log(chalk.cyan('📋 Format Selection:'));
-        console.log(
-          chalk.gray('  Choose the output format that best fits your needs:')
-        );
-        console.log();
-
-        selectedFormat = await selectIfInteractive(
-          handler.useInteractive,
-          'Select output format for your configurations:',
-          formatChoices,
-          DEFAULT_FORMAT
-        );
-      } else {
-        selectedFormat = DEFAULT_FORMAT;
+    // Helper: fetch text from URL (uses global fetch if available, falls back to https)
+    async function fetchText(url) {
+      if (typeof fetch === 'function') {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+        return await res.text();
       }
+      return await new Promise((resolve, reject) => {
+        https
+          .get(url, (resp) => {
+            if (resp.statusCode && resp.statusCode >= 400) {
+              reject(new Error(`Failed to fetch ${url}: ${resp.statusCode}`));
+              return;
+            }
+            let data = '';
+            resp.on('data', (chunk) => (data += chunk));
+            resp.on('end', () => resolve(data));
+          })
+          .on('error', reject);
+      });
     }
+
+    // Build combined prompt: template link + ~/.locksmith files + docs text
+    let combinedPrompt = '';
+    try {
+      const templateUrl =
+        'https://raw.githubusercontent.com/scalekit-inc/developer-docs/refs/heads/main/src/components/templates/prompts/fsa-quickstart.mdx';
+      const docsUrl = 'https://docs.scalekit.com/llms-full.txt';
+
+      const docsText = await fetchText(docsUrl).catch(() => '');
+
+      combinedPrompt += '=== Template: fsa-quickstart.mdx (link) ===\n';
+      combinedPrompt += templateUrl + '\n\n';
+
+      const configDir = path.join(os.homedir(), '.locksmith');
+      if (fs.existsSync(configDir)) {
+        const files = fs
+          .readdirSync(configDir)
+          .filter((f) => fs.statSync(path.join(configDir, f)).isFile());
+        combinedPrompt += '=== Locksmith Config Files ===\n';
+        for (const file of files) {
+          try {
+            const content = fs.readFileSync(path.join(configDir, file), 'utf8');
+            combinedPrompt += `\n--- ${file} ---\n` + content + '\n';
+          } catch {
+            // ignore file read errors
+          }
+        }
+        combinedPrompt += '\n';
+      }
+
+      combinedPrompt += '=== Reference: docs.scalekit.com/llms-full.txt ===\n';
+      combinedPrompt += docsText + '\n';
+    } catch (e) {
+      handler.logVerbose(
+        'Failed to fully build prompt, proceeding with partial content',
+        String(e?.message || e)
+      );
+    }
+
+    // Optional: write combined prompt to disk for user review
+    const promptOutPath = otherFlags['prompt-out'] || otherFlags.promptOut;
+    const defaultPromptPath = path.join(
+      os.homedir(),
+      '.locksmith',
+      'combined-prompt.txt'
+    );
+    const promptSavePath = promptOutPath || defaultPromptPath;
+    try {
+      fs.writeFileSync(promptSavePath, combinedPrompt, 'utf8');
+      handler.logVerbose('Saved combined prompt to:', promptSavePath);
+    } catch {}
+
+    // Format selection: no prompts (defaults unless flag provided)
+    let selectedFormat = format || DEFAULT_FORMAT;
 
     // Validate format
     if (!SUPPORTED_FORMATS.includes(selectedFormat.toLowerCase())) {
@@ -164,37 +223,13 @@ export async function handleGenerateCommand(options = {}) {
       );
     }
 
-    // Interactive output path
+    // Output path: no prompts (use flag if provided)
     let outputPath = output;
-    if (!outputPath) {
-      if (handler.useInteractive) {
-        outputPath = await promptIfInteractive(
-          handler.useInteractive,
-          'Output file path (leave empty for stdout):',
-          ''
-        );
-      }
-    }
 
-    // Interactive count selection
-    let itemCount = count;
-    if (!itemCount) {
-      if (handler.useInteractive) {
-        const countInput = await promptIfInteractive(
-          handler.useInteractive,
-          'Number of configurations to generate:',
-          DEFAULT_COUNT.toString()
-        );
-        itemCount = parseInt(countInput, 10);
-
-        if (isNaN(itemCount) || itemCount < 1) {
-          return handler.handleValidationError(
-            'Count must be a positive number.'
-          );
-        }
-      } else {
-        itemCount = DEFAULT_COUNT;
-      }
+    // Count: no prompts (defaults unless flag provided)
+    let itemCount = count || DEFAULT_COUNT;
+    if (isNaN(itemCount) || itemCount < 1) {
+      return handler.handleValidationError('Count must be a positive number.');
     }
 
     if (handler.isDryRun()) {
@@ -215,52 +250,64 @@ export async function handleGenerateCommand(options = {}) {
       }`
     );
 
-    // Interactive confirmation with detailed summary
-    if (handler.useInteractive && !handler.isDryRun()) {
-      console.log(chalk.blue('📋 Generation Summary:'));
-      console.log(chalk.gray(`  Modules: ${selectedModules.join(', ')}`));
-      console.log(chalk.gray(`  Format: ${selectedFormat.toUpperCase()}`));
-      console.log(chalk.gray(`  Output: ${outputPath || 'stdout'}`));
+    // If preferred broker is Claude, ensure it's setup and invoke CLI with the prompt
+    const preferredBroker = (loadPreferredBroker() || '').toLowerCase();
+    if (preferredBroker === 'claude') {
+      const claudeAvailable = hasClaudeCode();
+      if (!claudeAvailable) {
+        console.log(
+          chalk.yellow(
+            '⚠️  Claude CLI not detected. Launching broker configuration...'
+          )
+        );
+        await handleConfigureLLMBroker({
+          interactive: true,
+          verbose: !!verbose,
+        });
+      }
+
+      // Try again after potential configure
+      if (!hasClaudeCode()) {
+        console.log(
+          chalk.red('❌ Claude CLI still not available. Skipping invocation.')
+        );
+      } else if (!handler.isDryRun()) {
+        console.log(
+          chalk.cyan('🤖 Invoking Claude with the combined prompt...')
+        );
+        try {
+          await execa({
+            stdio: 'inherit',
+          })`claude --permission-mode plan -p ${combinedPrompt}`;
+        } catch (e) {
+          await new Promise((resolve) => {
+            const proc = spawn(
+              'claude',
+              ['--permission-mode', 'plan', '-p', combinedPrompt],
+              {
+                stdio: 'inherit',
+              }
+            );
+            proc.on('close', () => resolve());
+            proc.on('error', () => resolve());
+          });
+        }
+      }
+    } else if (preferredBroker) {
       console.log(
-        chalk.gray(
-          `  Count: ${itemCount} configuration${itemCount > 1 ? 's' : ''}`
+        chalk.yellow(
+          `⚠️  Broker "${preferredBroker}" not yet supported here. Claude only for now.`
         )
       );
-      console.log(chalk.gray(`  Generated at: ${new Date().toISOString()}`));
-
-      if (selectedFormat === 'json') {
-        console.log(
-          chalk.gray('  📄 JSON format will include structured auth data')
-        );
-      } else if (selectedFormat === 'yaml') {
-        console.log(
-          chalk.gray('  📄 YAML format will be human-readable and structured')
-        );
-      } else if (selectedFormat === 'env') {
-        console.log(
-          chalk.gray('  📄 ENV format will contain shell environment variables')
-        );
-      }
-
-      console.log();
-
-      const shouldProceed = await confirmIfInteractive(
-        handler.useInteractive,
-        `Ready to generate ${itemCount} configuration${
-          itemCount > 1 ? 's' : ''
-        } for ${selectedModules.length} module${
-          selectedModules.length > 1 ? 's' : ''
-        }?`,
-        true
+    } else {
+      console.log(
+        chalk.yellow(
+          '⚠️  No preferred LLM broker configured. Run: locksmith configure llm'
+        )
       );
-
-      if (!shouldProceed) {
-        console.log(
-          chalk.cyan('💡 Generation cancelled. No files were created.')
-        );
-        return CommandResult.success('Generation cancelled by user');
-      }
     }
+
+    // Skip interactive confirmation to streamline flow
 
     // TODO: Implement actual generation logic
     try {
