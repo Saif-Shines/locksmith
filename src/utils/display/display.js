@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import boxen from 'boxen';
 import figlet from 'figlet';
 import { mind } from 'gradient-string';
-import { CLI_CONFIG, ASCII_CONFIG } from '../config.js';
+import { CLI_CONFIG, ASCII_CONFIG } from '../../config_alias.js';
 
 // Gradient options available:
 // gradient.pastel() - current (soft rainbow)

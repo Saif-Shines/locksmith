@@ -1,5 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
+import { PROVIDER_SETTINGS } from '../../core/constants.js';
 
 export async function promptCredentials() {
   const answers = await inquirer.prompt([
@@ -84,14 +85,13 @@ export async function promptRemainingCredentials() {
 }
 
 export async function promptAuthProvider() {
-  const providers = [
-    { name: 'ScaleKit', value: 'scalekit', available: true },
-    { name: 'Auth0', value: 'auth0', available: false },
-    { name: 'FusionAuth', value: 'fusionauth', available: false },
-    { name: 'BetterAuth', value: 'betterauth', available: false },
-    { name: 'Supabase Auth', value: 'supabase', available: false },
-    { name: 'Firebase Auth', value: 'firebase', available: false },
-  ];
+  const providers = Object.entries(PROVIDER_SETTINGS).map(
+    ([key, settings]) => ({
+      name: settings.name,
+      value: key,
+      available: settings.available,
+    })
+  );
 
   const choices = providers.map((provider) => ({
     name: `${provider.name} - ${

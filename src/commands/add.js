@@ -3,8 +3,9 @@ import {
   shouldUseInteractive,
   selectIfInteractive,
   confirmIfInteractive,
-} from '../utils/interactive.js';
-import { promptAuthProvider } from '../utils/prompts.js';
+} from '../utils/interactive/interactive.js';
+import { promptAuthProvider } from '../utils/interactive/prompts.js';
+import { SUPPORTED_PROVIDERS } from '../core/constants.js';
 
 export async function handleAddCommand(options = {}) {
   const { provider, dryRun, verbose, interactive, noInteractive } = options;
@@ -46,12 +47,11 @@ export async function handleAddCommand(options = {}) {
   }
 
   // Check if provider is already configured
-  const supportedProviders = ['scalekit', 'auth0', 'fusionauth'];
-  if (!supportedProviders.includes(selectedProvider.toLowerCase())) {
+  if (!SUPPORTED_PROVIDERS.includes(selectedProvider.toLowerCase())) {
     console.log(chalk.red(`❌ Unsupported provider: ${selectedProvider}`));
     console.log(
       chalk.cyan('💡 Supported providers:'),
-      chalk.white(supportedProviders.join(', '))
+      chalk.white(SUPPORTED_PROVIDERS.join(', '))
     );
     return;
   }

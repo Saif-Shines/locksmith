@@ -1,15 +1,14 @@
 import chalk from 'chalk';
 import open from 'open';
-import { saveCredentials, hasCredentials } from '../utils/config.js';
+import { saveCredentials, hasCredentials } from '../utils/core/config.js';
 import {
   promptAuthProvider,
   promptEnvironmentId,
   promptRemainingCredentials,
   confirmAction,
-} from '../utils/prompts.js';
-import { shouldUseInteractive } from '../utils/interactive.js';
-
-const SCALEKIT_LOGIN_URL = 'https://auth.scalekit.cloud/a/auth/login';
+} from '../utils/interactive/prompts.js';
+import { shouldUseInteractive } from '../utils/interactive/interactive.js';
+import { SCALEKIT_LOGIN_URL } from '../core/constants.js';
 
 export async function handleInitCommand(options = {}) {
   const {

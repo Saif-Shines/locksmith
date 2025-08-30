@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import meow from 'meow';
 import meowHelp from 'cli-meow-help';
-import { CLI_CONFIG, COMMANDS, FLAGS } from '../config.js';
+import { CLI_CONFIG, COMMANDS, FLAGS } from '../../config_alias.js';
 
 export function generateHelpText() {
   const customCommands = {

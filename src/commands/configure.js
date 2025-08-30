@@ -4,19 +4,24 @@ import {
   loadCredentials,
   saveToolDetection,
   savePreferredBroker,
-} from '../utils/config.js';
+} from '../utils/core/config.js';
 import {
   hasClaudeCode,
   hasGemini,
   hasCursor,
   detectTools,
-} from '../utils/detection.js';
+} from '../utils/core/detection.js';
 import {
   shouldUseInteractive,
   selectIfInteractive,
   confirmIfInteractive,
-} from '../utils/interactive.js';
-import { promptAuthProvider } from '../utils/prompts.js';
+} from '../utils/interactive/interactive.js';
+import { promptAuthProvider } from '../utils/interactive/prompts.js';
+import {
+  SUPPORTED_PROVIDERS,
+  AVAILABLE_BROKERS,
+  DEFAULT_BROKER,
+} from '../core/constants.js';
 
 export async function handleConfigureCommand(options = {}) {
   const { subcommand, provider, dryRun, verbose, force, ...flags } = options;
@@ -81,12 +86,11 @@ async function handleConfigureAuth(options = {}) {
     }
   }
 
-  const supportedProviders = ['scalekit', 'auth0', 'fusionauth'];
-  if (!supportedProviders.includes(selectedProvider.toLowerCase())) {
+  if (!SUPPORTED_PROVIDERS.includes(selectedProvider.toLowerCase())) {
     console.log(chalk.red(`❌ Unsupported provider: ${selectedProvider}`));
     console.log(
       chalk.cyan('💡 Supported providers:'),
-      chalk.white(supportedProviders.join(', '))
+      chalk.white(SUPPORTED_PROVIDERS.join(', '))
     );
     return;
   }
@@ -204,7 +208,6 @@ async function handleConfigureLLMBroker(options = {}) {
       });
     }
 
-    const availableBrokers = ['gemini', 'claude', 'cursor-agent'];
     let selectedBroker = broker;
 
     // Handle broker selection
@@ -217,7 +220,7 @@ async function handleConfigureLLMBroker(options = {}) {
         );
 
         // Create choices with availability status
-        const brokerChoices = availableBrokers.map((brokerName) => {
+        const brokerChoices = AVAILABLE_BROKERS.map((brokerName) => {
           const available =
             detectedTools[brokerName.replace('-agent', '')] || false;
           const status = available
@@ -230,12 +233,14 @@ async function handleConfigureLLMBroker(options = {}) {
           };
         });
 
-        const { selectIfInteractive } = await import('../utils/interactive.js');
+        const { selectIfInteractive } = await import(
+          '../utils/interactive/interactive.js'
+        );
         selectedBroker = await selectIfInteractive(
           useInteractive,
           'Select your preferred LLM broker:',
           brokerChoices,
-          'gemini'
+          DEFAULT_BROKER
         );
       } else {
         console.log(
@@ -252,11 +257,11 @@ async function handleConfigureLLMBroker(options = {}) {
     }
 
     // Validate broker selection
-    if (!availableBrokers.includes(selectedBroker.toLowerCase())) {
+    if (!AVAILABLE_BROKERS.includes(selectedBroker.toLowerCase())) {
       console.log(chalk.red(`❌ Unsupported broker: ${selectedBroker}`));
       console.log(
         chalk.cyan('💡 Supported brokers:'),
-        chalk.white(availableBrokers.join(', '))
+        chalk.white(AVAILABLE_BROKERS.join(', '))
       );
       return;
     }
