@@ -1,99 +1,37 @@
 import chalk from 'chalk';
 import meow from 'meow';
-import meowHelp from 'cli-meow-help';
-import { CLI_CONFIG, COMMANDS, FLAGS } from '../../config_alias.js';
+import { CLI_CONFIG, FLAGS } from '../../config_alias.js';
+import {
+  generateProgressiveHelp,
+  generateContextualHelp,
+} from './help-system.js';
 
-export function generateHelpText() {
-  const customCommands = {
-    ...COMMANDS,
-    'configure auth': {
-      desc: 'Configure auth provider settings (e.g., --provider=scalekit)',
-    },
-    'configure llm': {
-      desc: 'Configure preferred LLM broker with auto-detection and interactive selection',
-    },
-    'init auth': {
-      desc: 'Initialize auth with specific provider (e.g., --provider=scalekit)',
-    },
-  };
+export function generateHelpText(flags = {}) {
+  // Check if this is a partial command request for contextual help
+  const input = flags._ || [];
 
-  // Create a custom help text with subcommand examples
-  const helpText = meowHelp({
-    name: CLI_CONFIG.name,
-    desc: chalk.cyan(CLI_CONFIG.description),
-    commands: customCommands,
-    flags: FLAGS,
-    header: chalk.bold.hex(CLI_CONFIG.brandColor)('🔐 LOCKSMITH CLI'),
-    footer: chalk.gray(`For more info, visit: ${CLI_CONFIG.homepage}`),
-    usage: '$ locksmith <command> [subcommand] [options]',
-  });
+  if (input.length > 0 && !flags.verbose) {
+    return generateContextualHelp(input, flags);
+  }
 
-  // Add subcommand examples section
-  const examplesSection = `
-
-   SUBCOMMAND EXAMPLES
-
-  ${chalk.cyan('$ locksmith init')}                          ${chalk.gray(
-    'Interactive setup wizard'
-  )}
-  ${chalk.cyan('$ locksmith init --no-interactive')}         ${chalk.gray(
-    'Non-interactive setup (requires all flags)'
-  )}
-  ${chalk.cyan(
-    '$ locksmith init --provider=scalekit --environment-id=...'
-  )} ${chalk.gray('Non-interactive ScaleKit setup')}
-
-  ${chalk.cyan('$ locksmith configure auth')}                ${chalk.gray(
-    'Interactive auth provider configuration'
-  )}
-  ${chalk.cyan('$ locksmith configure auth --provider=scalekit')} ${chalk.gray(
-    'Direct provider configuration'
-  )}
-  ${chalk.cyan('$ locksmith configure auth --interactive')}  ${chalk.gray(
-    'Interactive provider selection'
-  )}
-
-  ${chalk.cyan('$ locksmith add')}                           ${chalk.gray(
-    'Interactive provider addition'
-  )}
-  ${chalk.cyan('$ locksmith add --provider=auth0')}         ${chalk.gray(
-    'Add specific provider'
-  )}
-  ${chalk.cyan('$ locksmith add --interactive')}             ${chalk.gray(
-    'Interactive provider selection'
-  )}
-
-  ${chalk.cyan('$ locksmith generate')}                      ${chalk.gray(
-    'Interactive config generation'
-  )}
-  ${chalk.cyan('$ locksmith generate --interactive')}       ${chalk.gray(
-    'Interactive module selection'
-  )}
-
-  ${chalk.cyan('$ locksmith configure llm --broker=gemini')}  ${chalk.gray(
-    'Set preferred LLM broker to Gemini (saved for future commands)'
-  )}
-  ${chalk.cyan('$ locksmith configure llm --broker=claude')}   ${chalk.gray(
-    'Set preferred LLM broker to Claude (saved for future commands)'
-  )}
-  ${chalk.cyan('$ locksmith configure llm --interactive')}     ${chalk.gray(
-    'Interactive broker selection with guidance'
-  )}
-  ${chalk.cyan('$ locksmith configure llm')}                   ${chalk.gray(
-    'Auto-detect and configure LLM broker (saved for future commands)'
-  )}
-  ${chalk.cyan('$ locksmith --help')}                        ${chalk.gray(
-    'Show all commands and options'
-  )}
-  `;
-
-  return helpText + examplesSection;
+  return generateProgressiveHelp(flags);
 }
 
 export function initializeCli() {
-  const helpText = generateHelpText();
-  return meow(helpText, {
+  // Create a basic help text for meow initialization
+  const basicHelpText = generateProgressiveHelp({ verbose: false });
+
+  const cli = meow(basicHelpText, {
     importMeta: import.meta,
     flags: FLAGS,
   });
+
+  // If help is requested, regenerate with appropriate verbosity
+  if (cli.flags.help) {
+    const helpText = generateHelpText(cli.flags);
+    console.log(helpText);
+    process.exit(0);
+  }
+
+  return cli;
 }

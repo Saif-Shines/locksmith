@@ -2,6 +2,10 @@ import chalk from 'chalk';
 import open from 'open';
 import { saveCredentials, hasCredentials } from '../utils/core/config.js';
 import {
+  ErrorScenarios,
+  withErrorHandling,
+} from '../utils/core/error-handler.js';
+import {
   promptAuthProvider,
   promptEnvironmentId,
   promptRemainingCredentials,
@@ -50,36 +54,11 @@ function validateNonInteractiveParams(options) {
   if (!environmentUrl) missingParams.push('--environment-url');
 
   if (missingParams.length > 0) {
-    console.log(
-      chalk.red(`❌ Missing required parameters: ${missingParams.join(', ')}`)
-    );
-    console.log(
-      chalk.cyan('💡 Required parameters for non-interactive setup:')
-    );
-    console.log(chalk.white('  • --provider=scalekit'));
-    console.log(chalk.white('  • --environment-id=<your-env-id>'));
-    console.log(chalk.white('  • --client-id=<your-client-id>'));
-    console.log(chalk.white('  • --client-secret=<your-client-secret>'));
-    console.log(chalk.white('  • --environment-url=<your-env-url>'));
-    console.log(chalk.cyan('\n💡 Or use --interactive for guided setup.'));
-    return { isValid: false };
+    throw ErrorScenarios.MISSING_REQUIRED_FLAGS('init', missingParams);
   }
 
   if (provider.toLowerCase() !== 'scalekit') {
-    console.log(
-      chalk.red(`❌ Only ScaleKit is supported for non-interactive setup.`)
-    );
-    console.log(
-      chalk.cyan(
-        '💡 Use --provider=scalekit or --interactive for other providers.'
-      )
-    );
-    console.log(
-      chalk.cyan(
-        '💡 Interactive mode supports Auth0 and FusionAuth (coming soon).'
-      )
-    );
-    return { isValid: false };
+    throw ErrorScenarios.INVALID_PROVIDER(provider);
   }
 
   return {
@@ -107,14 +86,7 @@ async function handleNonInteractiveSetup(credentials) {
     saveCredentials(credentials);
     displaySuccessMessage();
   } catch (error) {
-    console.log(
-      chalk.red(`❌ Oops! We couldn't save your credentials: ${error.message}`)
-    );
-    console.log(
-      chalk.cyan(
-        '💡 Try checking file permissions or running with sudo if needed.'
-      )
-    );
+    throw ErrorScenarios.PERMISSION_DENIED('~/.locksmith/credentials.json');
   }
 }
 

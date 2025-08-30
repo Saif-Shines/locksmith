@@ -263,7 +263,6 @@ function saveAuthConfiguration(config, selectedProvider, dryRun, verbose) {
 
   console.log(chalk.cyan('\n🚀 Ready to generate configs! Try:'));
   console.log(chalk.white('  • locksmith generate'));
-  console.log(chalk.white('  • locksmith generate --format=json'));
 }
 
 /**
