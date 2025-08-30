@@ -102,21 +102,14 @@ async function validateInteractiveModuleSelection(handler, savedModules) {
   );
   console.log();
 
-  const moduleChoices = savedModules.map((moduleKey) => {
+  const moduleChoices = SUPPORTED_AUTH_MODULES.map((moduleKey) => {
     const settings = AUTH_MODULE_SETTINGS[moduleKey];
-    if (!settings) {
-      return {
-        name: `${moduleKey} - Unknown module`,
-        value: moduleKey,
-        short: moduleKey,
-        checked: false,
-      };
-    }
+    const isAlreadyConfigured = savedModules.includes(moduleKey);
     return {
       name: `${settings.name} - ${settings.description}`,
       value: moduleKey,
       short: settings.name,
-      checked: true,
+      checked: isAlreadyConfigured,
     };
   });
 
@@ -513,7 +506,7 @@ async function invokeCursorAgentHeadless(promptContent, tempFile) {
 }
 
 /**
- * Prompts for missing auth credentials only
+ * Prompts for missing auth credentials with full setup flow (like init command)
  */
 async function promptMissingCredentials(handler) {
   console.log(chalk.yellow('⚠️  Auth credentials not configured'));
@@ -526,36 +519,75 @@ async function promptMissingCredentials(handler) {
   }
 
   try {
-    // Prompt for environment ID
-    const environmentId = await promptEnvironmentId();
+    // Import the init command functions we need
+    const {
+      handleProviderSelection,
+      openScaleKitSignup,
+      collectEnvironmentId,
+      openApiCredentialsPage,
+      collectAndValidateCredentials,
+      confirmAndSaveCredentials,
+    } = await import('./init.js');
+
+    // Step 1: Handle provider selection (should always be ScaleKit for now)
+    console.log(chalk.blue('📋 ScaleKit Setup:'));
+    console.log(
+      chalk.gray('  • Enterprise-grade authentication for AI applications')
+    );
+    console.log(
+      chalk.gray('  • Supports SSO, multi-tenant, and custom auth flows')
+    );
+    console.log(chalk.gray('  • Perfect for production AI applications'));
+    console.log(
+      chalk.cyan("  💡 We'll help you set up your API credentials securely\n")
+    );
+
+    // Step 2: Open browser for ScaleKit signup
+    await openScaleKitSignup();
+
+    // Step 3: Collect environment ID
+    const environmentId = await collectEnvironmentId();
     if (!environmentId) {
-      console.log(chalk.red('❌ Environment ID is required'));
+      console.log(chalk.yellow('⚠️ Environment ID collection cancelled'));
       return false;
     }
 
-    // Prompt for remaining credentials
-    const remainingCredentials = await promptRemainingCredentials();
+    // Step 4: Open API credentials page
+    await openApiCredentialsPage(environmentId);
 
-    const credentials = {
-      environmentId,
-      ...remainingCredentials,
-    };
+    // Step 5: Collect and validate credentials
+    const credentials = await collectAndValidateCredentials(environmentId);
+    if (!credentials) {
+      console.log(chalk.yellow('⚠️ Credential collection cancelled or failed'));
+      return false;
+    }
 
-    // Confirm and save
+    // Step 6: Confirm and save credentials
     console.log(chalk.blue('\n📋 Setup Summary:'));
+    console.log(chalk.gray(`  Provider: ScaleKit`));
     console.log(chalk.gray(`  Environment ID: ${credentials.environmentId}`));
     console.log(chalk.gray(`  Client ID: ${credentials.clientId}`));
-    console.log(chalk.gray(`  Environment URL: ${credentials.environmentUrl}`));
+    console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
+    console.log(chalk.gray('  🔐 Credentials will be saved securely'));
 
+    console.log();
+
+    const { confirmAction } = await import('../utils/interactive/prompts.js');
     const shouldSave = await confirmAction(
       'Save these authentication credentials?'
     );
 
     if (!shouldSave) {
-      console.log(chalk.cyan('💡 Setup cancelled'));
+      console.log(chalk.cyan('💡 Setup cancelled. No credentials were saved.'));
+      console.log(
+        chalk.cyan(
+          "💡 You can run `locksmith init` again whenever you're ready."
+        )
+      );
       return false;
     }
 
+    // Save the credentials
     saveCredentials(credentials);
     console.log(chalk.green('✅ Auth credentials configured\n'));
     return true;
@@ -727,7 +759,7 @@ async function promptMissingLLMBroker(handler) {
  * Comprehensive setup validation with targeted prompts
  */
 async function ensureCompleteSetup(handler) {
-  const setupSpinner = startSpinner('SETUP_VALIDATION');
+  let setupSpinner = startSpinner('SETUP_VALIDATION');
 
   try {
     // 1. Check auth credentials
@@ -805,7 +837,7 @@ export async function handleGenerateCommand(options = {}) {
     // Ensure all prerequisites are met
     const setupComplete = await ensureCompleteSetup(handler);
     if (!setupComplete) {
-      return CommandResult.error(
+      return CommandResult.failure(
         'Setup incomplete - cannot proceed with generation'
       );
     }
@@ -820,7 +852,7 @@ export async function handleGenerateCommand(options = {}) {
 
     if (!moduleValidation.shouldContinue) {
       return moduleValidation.error
-        ? CommandResult.error(moduleValidation.error)
+        ? CommandResult.failure(moduleValidation.error)
         : CommandResult.success('Operation cancelled');
     }
 
@@ -867,7 +899,7 @@ export async function handleGenerateCommand(options = {}) {
           console.log(
             chalk.cyan('💡 Supported brokers: claude, gemini, cursor')
           );
-          return CommandResult.error(
+          return CommandResult.failure(
             `Unsupported LLM broker: ${preferredBroker}. Supported: claude, gemini, cursor`
           );
       }
