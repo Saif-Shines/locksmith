@@ -5,12 +5,15 @@ import {
   loadCredentials,
   saveToolDetection,
   savePreferredBroker,
+  saveAuthModules,
+  loadAuthModules,
 } from '../utils/core/config.js';
 import { detectTools } from '../utils/core/detection.js';
 import {
   shouldUseInteractive,
   selectIfInteractive,
   confirmIfInteractive,
+  promptIfInteractive,
 } from '../utils/interactive/interactive.js';
 import { promptAuthProvider } from '../utils/interactive/prompts.js';
 import {
@@ -640,6 +643,39 @@ async function confirmRedirectConfiguration(
 }
 
 /**
+ * Prompts user for callback URI
+ */
+async function promptForCallbackUri() {
+  const callbackUri = await promptIfInteractive(
+    true,
+    'Enter the callback URI you configured in ScaleKit (e.g., http://localhost:3000/auth/callback):',
+    ''
+  );
+
+  if (!callbackUri || callbackUri.trim() === '') {
+    console.log(
+      chalk.yellow('⚠️  No callback URI provided. You can configure it later.')
+    );
+    return null;
+  }
+
+  const urlPattern = /^https?:\/\/.+$/;
+  if (!urlPattern.test(callbackUri.trim())) {
+    console.log(
+      chalk.yellow(
+        '⚠️  Invalid URL format. Please provide a valid callback URI.'
+      )
+    );
+    return null;
+  }
+
+  console.log(chalk.green('✅ Callback URI configured successfully!'));
+  console.log(chalk.gray(`  URI: ${callbackUri.trim()}`));
+
+  return callbackUri.trim();
+}
+
+/**
  * Handles post-redirect configuration flow
  */
 async function handlePostRedirectFlow(useInteractive) {
@@ -888,8 +924,49 @@ async function handleConfigureRedirects(options = {}) {
     return;
   }
 
-  // 4. Handle post-redirect flow
+  // 4. Handle post-redirect flow and collect callback URI
   await handlePostRedirectFlow(useInteractive);
+
+  // 5. Prompt for callback URI if interactive
+  let callbackUri = null;
+  if (useInteractive) {
+    console.log();
+    callbackUri = await promptForCallbackUri();
+  }
+
+  // 6. Save callback URI to auth-modules.json
+  if (callbackUri) {
+    const existingConfig = loadAuthModules() || {};
+    const additionalConfig = {
+      ...existingConfig,
+      callbackUri,
+      redirectConfiguredAt: new Date().toISOString(),
+    };
+
+    saveAuthModules(existingConfig.selectedModules || [], additionalConfig);
+
+    console.log(chalk.green('✅ Redirect configuration saved successfully!'));
+    console.log(
+      chalk.blue('🔐 Configuration stored in:'),
+      chalk.gray('~/.locksmith/auth-modules.json')
+    );
+
+    if (verbose) {
+      console.log(chalk.gray('📋 Configuration summary:'));
+      console.log(chalk.gray(`  Callback URI: ${callbackUri}`));
+      console.log(
+        chalk.gray(`  Configured at: ${additionalConfig.redirectConfiguredAt}`)
+      );
+    }
+  } else {
+    console.log(
+      chalk.yellow(
+        '⚠️  No callback URI configured. You can set it up later with:'
+      )
+    );
+    console.log(chalk.white('  • locksmith add'));
+    console.log(chalk.white('  • locksmith generate'));
+  }
 }
 
 export { handleConfigureRedirects, handleConfigureLLMBroker };
