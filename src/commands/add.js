@@ -456,25 +456,18 @@ export async function handleAddCommand(options = {}) {
 
   const credentialsValid = await validateCredentials(useInteractive);
   if (!credentialsValid) {
-    credentialsSpinner.fail('❌ Credential validation failed');
+    credentialsSpinner.fail('Credential validation failed');
     return;
   }
-  credentialsSpinner.succeed('✅ Credentials validated');
+  credentialsSpinner.succeed('Credentials validated');
 
   // 2. Handle module selection
-  const moduleSpinner = startSpinner('MODULE_SELECTION');
-
   const moduleSelection = await selectModules({ module, useInteractive });
   if (!moduleSelection.shouldContinue) {
-    moduleSpinner.fail('❌ Module selection cancelled');
+    console.log(chalk.yellow('⚠️ Module selection cancelled'));
     return;
   }
   const { selectedModules } = moduleSelection;
-  moduleSpinner.succeed(
-    `✅ Selected ${selectedModules.length} module(s): ${selectedModules.join(
-      ', '
-    )}`
-  );
 
   // 3. Display dry run and verbose information
   if (dryRun) {
@@ -508,10 +501,10 @@ export async function handleAddCommand(options = {}) {
     dryRun
   );
   if (!confirmed) {
-    confirmationSpinner.fail('❌ Module addition cancelled');
+    confirmationSpinner.fail('Module addition cancelled');
     return;
   }
-  confirmationSpinner.succeed('✅ Configuration confirmed');
+  confirmationSpinner.succeed('Configuration confirmed');
 
   // 6. Handle redirects configuration if requested
   let callbackUri = null;
@@ -524,9 +517,9 @@ export async function handleAddCommand(options = {}) {
         useInteractive,
         verbose,
       });
-      redirectSpinner.succeed('✅ Redirect URLs configured');
+      redirectSpinner.succeed('Redirect URLs configured');
     } catch (error) {
-      redirectSpinner.warn('⚠️ Redirect configuration skipped');
+      redirectSpinner.warn('Redirect configuration skipped');
       console.log(chalk.gray(`Note: ${error.message}`));
     }
   }
@@ -541,8 +534,8 @@ export async function handleAddCommand(options = {}) {
     verbose
   );
   if (!success) {
-    saveSpinner.fail('❌ Failed to save configuration');
+    saveSpinner.fail('Failed to save configuration');
     return;
   }
-  saveSpinner.succeed('✅ Authentication modules added successfully');
+  saveSpinner.succeed('Authentication modules added successfully');
 }

@@ -429,10 +429,10 @@ export async function handleInitCommand(options = {}) {
 
   const selectedProvider = await handleProviderSelection();
   if (!selectedProvider) {
-    providerSpinner.fail('❌ Provider selection cancelled');
+    providerSpinner.fail('Provider selection cancelled');
     return;
   }
-  providerSpinner.succeed('✅ ScaleKit selected as authentication provider');
+  providerSpinner.succeed('ScaleKit selected as authentication provider');
 
   console.log(
     chalk.green("\n🚀 Let's get you set up with ScaleKit authentication!\n")
@@ -442,23 +442,23 @@ export async function handleInitCommand(options = {}) {
   const signupSpinner = startSpinner('BROWSER_SIGNUP');
 
   await openScaleKitSignup();
-  signupSpinner.succeed('✅ ScaleKit signup page opened');
+  signupSpinner.succeed('ScaleKit signup page opened');
 
   // 5. Collect environment ID
   const envSpinner = startSpinner('ENVIRONMENT_COLLECTION');
 
   const collectedEnvironmentId = await collectEnvironmentId();
   if (!collectedEnvironmentId) {
-    envSpinner.fail('❌ Environment ID collection failed');
+    envSpinner.fail('Environment ID collection failed');
     return;
   }
-  envSpinner.succeed('✅ Environment ID collected');
+  envSpinner.succeed('Environment ID collected');
 
   // 6. Open API credentials page
   const credentialsSpinner = startSpinner('BROWSER_CREDENTIALS');
 
   await openApiCredentialsPage(collectedEnvironmentId);
-  credentialsSpinner.succeed('✅ API credentials page opened');
+  credentialsSpinner.succeed('API credentials page opened');
 
   // 7. Collect and validate remaining credentials
   const collectSpinner = startSpinner('CREDENTIAL_COLLECTION');
@@ -467,19 +467,19 @@ export async function handleInitCommand(options = {}) {
     collectedEnvironmentId
   );
   if (!credentials) {
-    collectSpinner.fail('❌ Credential collection failed');
+    collectSpinner.fail('Credential collection failed');
     return;
   }
-  collectSpinner.succeed('✅ API credentials collected and validated');
+  collectSpinner.succeed('API credentials collected and validated');
 
   // 8. Confirm and save credentials
   const saveSpinner = startSpinner('CONFIG_SAVING');
 
   try {
     await confirmAndSaveCredentials(credentials);
-    saveSpinner.succeed('✅ Authentication setup complete!');
+    saveSpinner.succeed('Authentication setup complete!');
   } catch (error) {
-    saveSpinner.fail('❌ Failed to save authentication configuration');
+    saveSpinner.fail('Failed to save authentication configuration');
     throw error;
   }
 }

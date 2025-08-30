@@ -70,14 +70,14 @@ export function detectToolsWithProgress(verbose = false) {
     const totalCount = Object.keys(results).length;
 
     if (availableCount > 0) {
-      spinner.succeed(`✅ Detected ${availableCount}/${totalCount} AI tools`);
+      spinner.succeed(`Detected ${availableCount}/${totalCount} AI tools`);
     } else {
-      spinner.warn(`⚠️ No AI tools detected (${totalCount} checked)`);
+      spinner.warn(`No AI tools detected (${totalCount} checked)`);
     }
 
     return results;
   } catch (error) {
-    spinner.fail('❌ Failed to detect AI tools');
+    spinner.fail('Failed to detect AI tools');
     throw error;
   }
 }

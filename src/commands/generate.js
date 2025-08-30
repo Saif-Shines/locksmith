@@ -776,13 +776,13 @@ async function ensureCompleteSetup(handler) {
       setupSpinner = startSpinner('SETUP_VALIDATION');
     }
 
-    setupSpinner.succeed('✅ Setup validation complete');
+    setupSpinner.succeed('Setup validation complete');
     console.log(
       chalk.green('🎉 All prerequisites met and ready for generation.\n')
     );
     return true;
   } catch (error) {
-    setupSpinner.fail('❌ Setup validation failed');
+    setupSpinner.fail('Setup validation failed');
     throw error;
   }
 }
@@ -863,9 +863,7 @@ export async function handleGenerateCommand(options = {}) {
           await handleCursorAgentIntegration(handler, combinedPrompt, verbose);
           break;
         default:
-          generationSpinner.fail(
-            `❌ Unsupported LLM broker: ${preferredBroker}`
-          );
+          generationSpinner.fail(`Unsupported LLM broker: ${preferredBroker}`);
           console.log(
             chalk.cyan('💡 Supported brokers: claude, gemini, cursor')
           );
@@ -875,10 +873,10 @@ export async function handleGenerateCommand(options = {}) {
       }
 
       generationSpinner.succeed(
-        `✅ Configuration generation complete with ${preferredBroker}`
+        `Configuration generation complete with ${preferredBroker}`
       );
     } catch (error) {
-      generationSpinner.fail(`❌ Generation failed with ${preferredBroker}`);
+      generationSpinner.fail(`Generation failed with ${preferredBroker}`);
       throw error;
     }
 

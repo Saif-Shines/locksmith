@@ -1,4 +1,5 @@
 import ora from 'ora';
+import { formatMessage, getSymbol } from './symbols.js';
 
 /**
  * Centralized spinner configurations and utilities
@@ -16,91 +17,91 @@ export const SPINNER_CONFIGS = {
   // Tool detection
   TOOL_DETECTION: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔍 Detecting available AI tools...',
+    text: `${getSymbol('detect')} Detecting available AI tools...`,
     color: 'cyan',
   },
 
   // Setup and validation
   SETUP_VALIDATION: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔍 Validating Locksmith setup...',
+    text: `${getSymbol('detect')} Validating Locksmith setup...`,
     color: 'blue',
   },
 
   CREDENTIAL_VALIDATION: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔐 Validating authentication credentials...',
+    text: `${getSymbol('auth')} Validating authentication credentials...`,
     color: 'blue',
   },
 
   // Provider and broker operations
   PROVIDER_SELECTION: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔍 Selecting authentication provider...',
+    text: `${getSymbol('detect')} Selecting authentication provider...`,
     color: 'blue',
   },
 
   BROKER_GENERATION: {
     ...BASE_SPINNER_CONFIG,
-    text: '🚀 Generating configurations with {broker}...',
+    text: `${getSymbol('generate')} Generating configurations with {broker}...`,
     color: 'green',
   },
 
   // Module operations
   MODULE_SELECTION: {
     ...BASE_SPINNER_CONFIG,
-    text: '📦 Selecting authentication modules...',
+    text: `${getSymbol('module')} Selecting authentication modules...`,
     color: 'cyan',
   },
 
   MODULE_CONFIRMATION: {
     ...BASE_SPINNER_CONFIG,
-    text: '📋 Preparing module configuration...',
+    text: `${getSymbol('config')} Preparing module configuration...`,
     color: 'yellow',
   },
 
   MODULE_SAVING: {
     ...BASE_SPINNER_CONFIG,
-    text: '💾 Saving authentication modules...',
+    text: `${getSymbol('save')} Saving authentication modules...`,
     color: 'green',
   },
 
   // Browser and external operations
   BROWSER_SIGNUP: {
     ...BASE_SPINNER_CONFIG,
-    text: '🌐 Opening ScaleKit signup page...',
+    text: `${getSymbol('browser')} Opening ScaleKit signup page...`,
     color: 'cyan',
   },
 
   BROWSER_CREDENTIALS: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔐 Opening API credentials page...',
+    text: `${getSymbol('auth')} Opening API credentials page...`,
     color: 'cyan',
   },
 
   // Credential operations
   ENVIRONMENT_COLLECTION: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔑 Collecting environment ID...',
+    text: `${getSymbol('key')} Collecting environment ID...`,
     color: 'yellow',
   },
 
   CREDENTIAL_COLLECTION: {
     ...BASE_SPINNER_CONFIG,
-    text: '📝 Collecting API credentials...',
+    text: `${getSymbol('config')} Collecting API credentials...`,
     color: 'green',
   },
 
   CONFIG_SAVING: {
     ...BASE_SPINNER_CONFIG,
-    text: '💾 Saving authentication configuration...',
+    text: `${getSymbol('save')} Saving authentication configuration...`,
     color: 'green',
   },
 
   // Redirect operations
   REDIRECT_CONFIG: {
     ...BASE_SPINNER_CONFIG,
-    text: '🔗 Configuring redirect URLs...',
+    text: `${getSymbol('redirect')} Configuring redirect URLs...`,
     color: 'cyan',
   },
 };
@@ -167,15 +168,17 @@ export function startBrokerSpinner(broker, operation = 'generation') {
  * Utility function to handle spinner success/failure states
  * @param {ora.Ora} spinner - The spinner instance
  * @param {boolean} success - Whether the operation succeeded
- * @param {string} successText - Success message
- * @param {string} failText - Failure message
+ * @param {string} successText - Success message (optional, will use default)
+ * @param {string} failText - Failure message (optional, will use default)
  * @returns {ora.Ora} - The spinner instance
  */
 export function completeSpinner(spinner, success, successText, failText) {
   if (success) {
-    return spinner.succeed(successText);
+    const message = successText || 'Operation completed successfully';
+    return spinner.succeed(formatMessage('success', message));
   } else {
-    return spinner.fail(failText);
+    const message = failText || 'Operation failed';
+    return spinner.fail(formatMessage('error', message));
   }
 }
 
