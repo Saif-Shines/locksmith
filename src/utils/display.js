@@ -1,12 +1,25 @@
 import chalk from 'chalk';
 import boxen from 'boxen';
 import figlet from 'figlet';
-import gradient from 'gradient-string';
+import { mind } from 'gradient-string';
 import { CLI_CONFIG, ASCII_CONFIG } from '../config.js';
+
+// Gradient options available:
+// gradient.pastel() - current (soft rainbow)
+// gradient.rainbow() - vibrant rainbow
+// gradient.cristal() - crystal effect
+// gradient.teen() - teen colors
+// gradient.summer() - summer colors
+// gradient.warm() - warm colors
+// gradient.cool() - cool colors
+// gradient.mind() - mind-blowing colors
+// gradient.morning() - morning colors
+// gradient.vice() - vice colors
+// gradient.fruit() - fruit colors
 
 export function displayAsciiTitle() {
   const title = figlet.textSync('LOCKSMITH', ASCII_CONFIG);
-  console.log(gradient.pastel(title));
+  console.log(mind(title)); // Try rainbow for now
   console.log();
 }
 
