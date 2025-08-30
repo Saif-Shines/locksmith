@@ -42,6 +42,7 @@
     "gradient-string": "^3.0.0",
     "ink": "^6.2.3",
     "inquirer": "^12.9.4",
+    "listr2": "^9.0.3",
     "log-symbols": "^7.0.1",
     "meow": "^13.2.0",
     "open": "^10.2.0",

@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import open from 'open';
 import { startSpinner } from '../utils/display/spinner.js';
+import { runTasks } from '../utils/display/task-list.js';
 import { saveCredentials, hasCredentials } from '../utils/core/config.js';
 import {
   ErrorScenarios,
@@ -94,7 +95,7 @@ async function handleNonInteractiveSetup(credentials) {
 /**
  * Handles interactive provider selection and guidance
  */
-async function handleProviderSelection() {
+export async function handleProviderSelection() {
   const selectedProvider = await promptAuthProvider();
 
   if (!selectedProvider) {
@@ -179,7 +180,7 @@ function displayFusionAuthGuidance() {
 /**
  * Opens browser for ScaleKit signup
  */
-async function openScaleKitSignup() {
+export async function openScaleKitSignup() {
   console.log(
     chalk.cyan('🌐 Opening your browser to create your ScaleKit account...')
   );
@@ -208,7 +209,7 @@ async function openScaleKitSignup() {
 /**
  * Collects environment ID from user
  */
-async function collectEnvironmentId() {
+export async function collectEnvironmentId() {
   const environmentId = await promptEnvironmentId();
 
   if (!environmentId) {
@@ -232,7 +233,7 @@ async function collectEnvironmentId() {
 /**
  * Opens browser for API credentials
  */
-async function openApiCredentialsPage(environmentId) {
+export async function openApiCredentialsPage(environmentId) {
   const settingsUrl = `https://app.scalekit.cloud/ws/environments/${environmentId}/settings/api-credentials`;
 
   console.log(
@@ -268,7 +269,7 @@ async function openApiCredentialsPage(environmentId) {
 /**
  * Collects and validates remaining credentials
  */
-async function collectAndValidateCredentials(environmentId) {
+export async function collectAndValidateCredentials(environmentId) {
   const remainingCredentials = await promptRemainingCredentials();
 
   const credentials = {
@@ -305,47 +306,24 @@ async function collectAndValidateCredentials(environmentId) {
 /**
  * Confirms and saves credentials
  */
-async function confirmAndSaveCredentials(credentials) {
-  console.log(chalk.blue('📋 Setup Summary:'));
-  console.log(chalk.gray(`  Provider: ScaleKit`));
-  console.log(chalk.gray(`  Environment ID: ${credentials.environmentId}`));
-  console.log(chalk.gray(`  Client ID: ${credentials.clientId}`));
-  console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
-  console.log(
-    chalk.gray(
-      '  🔐 Credentials will be saved securely to ~/.locksmith/credentials.json'
-    )
-  );
-
-  console.log();
-
-  const shouldSave = await confirmAction(
-    'Save these authentication credentials?'
-  );
-
-  if (!shouldSave) {
-    console.log(chalk.cyan('💡 Setup cancelled. No credentials were saved.'));
-    console.log(
-      chalk.cyan("💡 You can run `locksmith init` again whenever you're ready.")
-    );
-    return false;
-  }
-
+export async function saveCredentialsWithoutConfirmation(credentials) {
   try {
     saveCredentials(credentials);
-    displaySuccessMessage();
     return true;
   } catch (error) {
     console.log(
-      chalk.red(`❌ Oops! We couldn't save your credentials: ${error.message}`)
-    );
-    console.log(
-      chalk.cyan(
-        '💡 Try checking file permissions or running with sudo if needed.'
+      chalk.red(
+        `❌ Failed to save authentication credentials: ${error.message}`
       )
     );
+    console.log(chalk.cyan('💡 Try running with --verbose for more details.'));
     return false;
   }
+}
+
+// Legacy function - kept for backward compatibility but now just saves without confirmation
+export async function confirmAndSaveCredentials(credentials) {
+  return await saveCredentialsWithoutConfirmation(credentials);
 }
 
 /**
@@ -404,7 +382,7 @@ export async function handleInitCommand(options = {}) {
     return;
   }
 
-  // 2. Handle non-interactive setup
+  // 2. Handle non-interactive setup (keep existing logic for now)
   if (!useInteractive) {
     console.log(chalk.blue('🔧 Running in non-interactive mode...'));
 
@@ -424,62 +402,99 @@ export async function handleInitCommand(options = {}) {
     return;
   }
 
-  // 3. Handle interactive provider selection
-  const providerSpinner = startSpinner('PROVIDER_SELECTION');
-
+  // 3. Handle interactive provider selection outside of task list
   const selectedProvider = await handleProviderSelection();
   if (!selectedProvider) {
-    providerSpinner.fail('Provider selection cancelled');
+    console.log(chalk.yellow('⚠️ Provider selection cancelled'));
     return;
   }
-  providerSpinner.succeed('ScaleKit selected as authentication provider');
 
-  console.log(
-    chalk.green("\n🚀 Let's get you set up with ScaleKit authentication!\n")
-  );
-
-  // 4. Open ScaleKit signup page
-  const signupSpinner = startSpinner('BROWSER_SIGNUP');
-
+  // 4. Handle signup page opening outside of task list
   await openScaleKitSignup();
-  signupSpinner.succeed('ScaleKit signup page opened');
 
-  // 5. Collect environment ID
-  const envSpinner = startSpinner('ENVIRONMENT_COLLECTION');
-
+  // 5. Handle environment ID collection outside of task list
   const collectedEnvironmentId = await collectEnvironmentId();
   if (!collectedEnvironmentId) {
-    envSpinner.fail('Environment ID collection failed');
+    console.log(chalk.yellow('⚠️ Environment ID collection cancelled'));
     return;
   }
-  envSpinner.succeed('Environment ID collected');
 
-  // 6. Open API credentials page
-  const credentialsSpinner = startSpinner('BROWSER_CREDENTIALS');
-
+  // 6. Handle API credentials page opening outside of task list
   await openApiCredentialsPage(collectedEnvironmentId);
-  credentialsSpinner.succeed('API credentials page opened');
 
-  // 7. Collect and validate remaining credentials
-  const collectSpinner = startSpinner('CREDENTIAL_COLLECTION');
-
+  // 7. Handle credential collection outside of task list
   const credentials = await collectAndValidateCredentials(
     collectedEnvironmentId
   );
   if (!credentials) {
-    collectSpinner.fail('Credential collection failed');
+    console.log(chalk.yellow('⚠️ Credential collection cancelled or failed'));
     return;
   }
-  collectSpinner.succeed('API credentials collected and validated');
 
-  // 8. Confirm and save credentials
-  const saveSpinner = startSpinner('CONFIG_SAVING');
+  // 8. Handle confirmation outside of task list
+  console.log(chalk.blue('📋 Setup Summary:'));
+  console.log(chalk.gray(`  Provider: ScaleKit`));
+  console.log(chalk.gray(`  Environment ID: ${credentials.environmentId}`));
+  console.log(chalk.gray(`  Client ID: ${credentials.clientId}`));
+  console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
+  console.log(
+    chalk.gray(
+      '  🔐 Credentials will be saved securely to ~/.locksmith/credentials.json'
+    )
+  );
+  console.log();
 
+  const { confirmAction } = await import('../utils/interactive/prompts.js');
+  const shouldSave = await confirmAction(
+    'Save these authentication credentials?'
+  );
+
+  if (!shouldSave) {
+    console.log(chalk.cyan('💡 Setup cancelled. No credentials were saved.'));
+    console.log(
+      chalk.cyan("💡 You can run `locksmith init` again whenever you're ready.")
+    );
+    return;
+  }
+
+  // 9. Use task list for the final processing step (no interactive prompts)
   try {
-    await confirmAndSaveCredentials(credentials);
-    saveSpinner.succeed('Authentication setup complete!');
+    const { Listr } = await import('listr2');
+    const processingTasks = new Listr(
+      [
+        {
+          title: '💾 Saving authentication configuration',
+          task: async (ctx) => {
+            // Save credentials without confirmation (already confirmed above)
+            try {
+              saveCredentials(credentials);
+              return true;
+            } catch (error) {
+              throw new Error(`Failed to save credentials: ${error.message}`);
+            }
+          },
+        },
+      ],
+      {
+        concurrent: false,
+        exitOnError: true,
+        rendererOptions: {
+          collapse: false,
+          showTimer: true,
+          removeEmptyLines: false,
+        },
+      }
+    );
+
+    const { runTasks } = await import('../utils/display/task-list.js');
+    await runTasks(processingTasks, {
+      successMessage: 'Authentication setup complete!',
+      failMessage: 'Setup failed. You can try again with: locksmith init',
+    });
+
+    displaySuccessMessage();
   } catch (error) {
-    saveSpinner.fail('Failed to save authentication configuration');
-    throw error;
+    // Error already handled by runTasks
+    process.exit(1);
   }
 }

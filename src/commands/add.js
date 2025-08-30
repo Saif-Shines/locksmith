@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import open from 'open';
 import { startSpinner } from '../utils/display/spinner.js';
+import { runTasks } from '../utils/display/task-list.js';
 import {
   shouldUseInteractive,
   confirmIfInteractive,
@@ -21,7 +22,7 @@ import { handleInitCommand } from './init.js';
 /**
  * Validates if credentials exist and handles init flow if needed
  */
-async function validateCredentials(useInteractive) {
+export async function validateCredentials(useInteractive) {
   const existingCredentials = loadCredentials();
   if (existingCredentials && existingCredentials.environmentId) {
     return true;
@@ -68,7 +69,7 @@ async function validateCredentials(useInteractive) {
 /**
  * Handles module selection (interactive or from flag)
  */
-async function selectModules(options) {
+export async function selectModules(options) {
   const { module, useInteractive } = options;
 
   if (module) {
@@ -189,7 +190,7 @@ function displaySelectedModules(selectedModules) {
 /**
  * Handles redirect configuration for ScaleKit
  */
-async function handleRedirectConfiguration({ useInteractive, verbose }) {
+export async function handleRedirectConfiguration({ useInteractive, verbose }) {
   const credentials = loadCredentials();
   if (!credentials || !credentials.environmentId) {
     console.log(chalk.red('❌ No valid credentials found for redirect setup.'));
@@ -309,7 +310,7 @@ async function promptForCallbackUri() {
 /**
  * Saves modules and configuration
  */
-function saveModulesAndConfiguration(
+export function saveModulesAndConfiguration(
   selectedModules,
   callbackUri,
   dryRun,
@@ -398,48 +399,6 @@ function displaySuccessSummary(
   );
 }
 
-/**
- * Handles user confirmation for module addition
- */
-async function confirmModuleAddition(
-  selectedModules,
-  configureRedirects,
-  useInteractive,
-  dryRun
-) {
-  if (!useInteractive || dryRun) {
-    return true;
-  }
-
-  console.log(chalk.blue('📋 Module Addition Summary:'));
-  console.log(chalk.gray(`  Modules: ${selectedModules.join(', ')}`));
-  console.log(
-    chalk.gray(`  Configure redirects: ${configureRedirects ? 'Yes' : 'No'}`)
-  );
-  console.log(chalk.gray(`  Added at: ${new Date().toISOString()}`));
-  console.log(
-    chalk.gray('  📋 This will configure authentication modules for your app')
-  );
-  console.log();
-
-  const shouldProceed = await confirmIfInteractive(
-    useInteractive,
-    `Add ${selectedModules.length} authentication module${
-      selectedModules.length > 1 ? 's' : ''
-    }?`,
-    true
-  );
-
-  if (!shouldProceed) {
-    console.log(
-      chalk.cyan('💡 Module addition cancelled. No changes were made.')
-    );
-    return false;
-  }
-
-  return true;
-}
-
 export async function handleAddCommand(options = {}) {
   const { module, dryRun, verbose, interactive, noInteractive } = options;
   const useInteractive = shouldUseInteractive({ interactive, noInteractive });
@@ -451,17 +410,12 @@ export async function handleAddCommand(options = {}) {
     )
   );
 
-  // 1. Validate credentials and handle init if needed
-  const credentialsSpinner = startSpinner('CREDENTIAL_VALIDATION');
-
-  const credentialsValid = await validateCredentials(useInteractive);
-  if (!credentialsValid) {
-    credentialsSpinner.fail('Credential validation failed');
-    return;
+  // Display dry run information upfront
+  if (dryRun) {
+    console.log(chalk.yellow('🔍 Dry run mode - no changes will be made'));
   }
-  credentialsSpinner.succeed('Credentials validated');
 
-  // 2. Handle module selection
+  // Handle interactive module selection outside of task list to avoid renderer conflicts
   const moduleSelection = await selectModules({ module, useInteractive });
   if (!moduleSelection.shouldContinue) {
     console.log(chalk.yellow('⚠️ Module selection cancelled'));
@@ -469,73 +423,102 @@ export async function handleAddCommand(options = {}) {
   }
   const { selectedModules } = moduleSelection;
 
-  // 3. Display dry run and verbose information
-  if (dryRun) {
-    console.log(chalk.yellow('🔍 Dry run mode - no changes will be made'));
-  }
-
-  if (verbose) {
-    console.log(chalk.blue('📋 Add module details:'));
-    console.log(chalk.gray(`  Modules: ${selectedModules.join(', ')}`));
-    console.log(chalk.gray(`  Dry run: ${dryRun ? 'Yes' : 'No'}`));
-  }
-
-  // 4. Ask about redirects configuration
+  // Handle redirect configuration interactively (outside task list)
   let configureRedirects = false;
+  let callbackUri = null;
+
   if (useInteractive && !dryRun) {
     console.log();
+    const { confirmIfInteractive } = await import(
+      '../utils/interactive/interactive.js'
+    );
     configureRedirects = await confirmIfInteractive(
       useInteractive,
       'Would you like to configure redirect URLs for authentication?',
       false
     );
-  }
 
-  // 5. Get user confirmation
-  const confirmationSpinner = startSpinner('MODULE_CONFIRMATION');
-
-  const confirmed = await confirmModuleAddition(
-    selectedModules,
-    configureRedirects,
-    useInteractive,
-    dryRun
-  );
-  if (!confirmed) {
-    confirmationSpinner.fail('Module addition cancelled');
-    return;
-  }
-  confirmationSpinner.succeed('Configuration confirmed');
-
-  // 6. Handle redirects configuration if requested
-  let callbackUri = null;
-  if (configureRedirects && !dryRun) {
-    console.log();
-    const redirectSpinner = startSpinner('REDIRECT_CONFIG');
-
-    try {
-      callbackUri = await handleRedirectConfiguration({
-        useInteractive,
-        verbose,
-      });
-      redirectSpinner.succeed('Redirect URLs configured');
-    } catch (error) {
-      redirectSpinner.warn('Redirect configuration skipped');
-      console.log(chalk.gray(`Note: ${error.message}`));
+    if (configureRedirects) {
+      try {
+        callbackUri = await handleRedirectConfiguration({
+          useInteractive,
+          verbose,
+        });
+      } catch (error) {
+        console.log(chalk.yellow(`⚠️  ${error.message}`));
+        callbackUri = null;
+      }
     }
   }
 
-  // 7. Save modules and configuration
-  const saveSpinner = startSpinner('MODULE_SAVING');
+  // Now use task list for the processing steps (no interactive prompts)
+  try {
+    const { Listr } = await import('listr2');
+    const processingTasks = new Listr(
+      [
+        {
+          title: '🔐 Validating authentication credentials',
+          task: async (ctx) => {
+            const credentialsValid = await validateCredentials(useInteractive);
+            if (!credentialsValid) {
+              throw new Error('Authentication credentials validation failed');
+            }
+            ctx.credentialsValid = true;
+          },
+        },
+        {
+          title: '💾 Saving authentication modules',
+          task: async (ctx) => {
+            const success = saveModulesAndConfiguration(
+              selectedModules,
+              callbackUri,
+              dryRun,
+              verbose
+            );
 
-  const success = saveModulesAndConfiguration(
-    selectedModules,
-    callbackUri,
-    dryRun,
-    verbose
-  );
-  if (!success) {
-    saveSpinner.fail('Failed to save configuration');
-    return;
+            if (!success) {
+              throw new Error('Failed to save authentication modules');
+            }
+
+            ctx.success = true;
+          },
+        },
+      ],
+      {
+        concurrent: false,
+        exitOnError: true,
+        rendererOptions: {
+          collapse: false,
+          showTimer: true,
+          removeEmptyLines: false,
+        },
+      }
+    );
+
+    const { runTasks } = await import('../utils/display/task-list.js');
+    await runTasks(processingTasks, {
+      successMessage: 'Authentication modules added successfully!',
+      failMessage:
+        'Module addition failed. You can try again with: locksmith add',
+    });
+
+    // Display success guidance
+    if (!dryRun) {
+      console.log();
+      console.log(chalk.blue('🚀 Ready to generate configurations!'));
+      console.log(
+        chalk.white('  • ') +
+          chalk.green('locksmith generate') +
+          chalk.gray(' - Create secure configs for your applications')
+      );
+      console.log(
+        chalk.white('  • ') +
+          chalk.green('locksmith --help') +
+          chalk.gray(' - See all available commands')
+      );
+    }
+  } catch (error) {
+    // Error already handled by runTasks
+    process.exit(1);
   }
-  saveSpinner.succeed('Authentication modules added successfully');
 }
