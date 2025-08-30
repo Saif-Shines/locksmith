@@ -18,6 +18,7 @@ export const COMMANDS = {
     desc: 'Configure authentication settings',
     subcommands: {
       auth: { desc: 'Configure auth provider settings' },
+      llm: { desc: 'Configure preferred LLM broker (gemini, claude, cursor-agent)' },
     },
   },
   add: { desc: 'Add authentication providers' },
@@ -45,6 +46,11 @@ export const MODE_FLAGS = {
     type: 'boolean',
     desc: 'Run in interactive mode',
     shortFlag: 'i',
+  },
+  noInteractive: {
+    type: 'boolean',
+    desc: 'Skip interactive prompts',
+    shortFlag: 'I',
   },
 };
 
@@ -80,6 +86,31 @@ export const VALUE_FLAGS = {
     type: 'string',
     desc: 'Configuration value to set',
     shortFlag: 'V',
+  },
+  environmentId: {
+    type: 'string',
+    desc: 'ScaleKit environment ID',
+    shortFlag: 'e',
+  },
+  clientId: {
+    type: 'string',
+    desc: 'ScaleKit client ID',
+    shortFlag: 'c',
+  },
+  clientSecret: {
+    type: 'string',
+    desc: 'ScaleKit client secret',
+    shortFlag: 's',
+  },
+  environmentUrl: {
+    type: 'string',
+    desc: 'ScaleKit environment URL',
+    shortFlag: 'u',
+  },
+  broker: {
+    type: 'string',
+    desc: 'Preferred LLM broker (gemini, claude, cursor-agent)',
+    shortFlag: 'b',
   },
 };
 

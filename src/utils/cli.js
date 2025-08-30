@@ -9,6 +9,9 @@ export function generateHelpText() {
     'configure auth': {
       desc: 'Configure auth provider settings (e.g., --provider=scalekit)',
     },
+    'configure llm': {
+      desc: 'Configure preferred LLM broker with auto-detection and interactive selection',
+    },
     'init auth': {
       desc: 'Initialize auth with specific provider (e.g., --provider=scalekit)',
     },
@@ -31,19 +34,59 @@ export function generateHelpText() {
    SUBCOMMAND EXAMPLES
 
   ${chalk.cyan('$ locksmith init')}                          ${chalk.gray(
-    'Interactive setup'
+    'Interactive setup wizard'
   )}
-  ${chalk.cyan('$ locksmith init auth --provider=scalekit')}  ${chalk.gray(
-    'Direct provider setup'
+  ${chalk.cyan('$ locksmith init --no-interactive')}         ${chalk.gray(
+    'Non-interactive setup (requires all flags)'
+  )}
+  ${chalk.cyan(
+    '$ locksmith init --provider=scalekit --environment-id=...'
+  )} ${chalk.gray('Non-interactive ScaleKit setup')}
+
+  ${chalk.cyan('$ locksmith configure auth')}                ${chalk.gray(
+    'Interactive auth provider configuration'
   )}
   ${chalk.cyan('$ locksmith configure auth --provider=scalekit')} ${chalk.gray(
-    'Configure provider'
+    'Direct provider configuration'
   )}
-  ${chalk.cyan('$ locksmith generate --format=json')}         ${chalk.gray(
-    'Generate configs'
+  ${chalk.cyan('$ locksmith configure auth --interactive')}  ${chalk.gray(
+    'Interactive provider selection'
   )}
-  ${chalk.cyan('$ locksmith add --provider=auth0 --dry-run')} ${chalk.gray(
-    'Preview adding provider'
+
+  ${chalk.cyan('$ locksmith add')}                           ${chalk.gray(
+    'Interactive provider addition'
+  )}
+  ${chalk.cyan('$ locksmith add --provider=auth0')}         ${chalk.gray(
+    'Add specific provider'
+  )}
+  ${chalk.cyan('$ locksmith add --interactive')}             ${chalk.gray(
+    'Interactive provider selection'
+  )}
+
+  ${chalk.cyan('$ locksmith generate')}                      ${chalk.gray(
+    'Interactive config generation'
+  )}
+  ${chalk.cyan('$ locksmith generate --format=json --count=5')} ${chalk.gray(
+    'Generate 5 JSON configs'
+  )}
+  ${chalk.cyan('$ locksmith generate --interactive')}       ${chalk.gray(
+    'Interactive format/output selection'
+  )}
+
+  ${chalk.cyan('$ locksmith configure llm --broker=gemini')}  ${chalk.gray(
+    'Set preferred LLM broker to Gemini (saved for future commands)'
+  )}
+  ${chalk.cyan('$ locksmith configure llm --broker=claude')}   ${chalk.gray(
+    'Set preferred LLM broker to Claude (saved for future commands)'
+  )}
+  ${chalk.cyan('$ locksmith configure llm --interactive')}     ${chalk.gray(
+    'Interactive broker selection with guidance'
+  )}
+  ${chalk.cyan('$ locksmith configure llm')}                   ${chalk.gray(
+    'Auto-detect and configure LLM broker (saved for future commands)'
+  )}
+  ${chalk.cyan('$ locksmith --help')}                        ${chalk.gray(
+    'Show all commands and options'
   )}
   `;
 

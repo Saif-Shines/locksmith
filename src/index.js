@@ -43,6 +43,8 @@ async function handleCommand(cli) {
     await handleInitCommand({ ...flags, interactive: true });
   } else if (command === 'configure' && subcommand === 'auth') {
     await handleConfigureCommand({ subcommand: 'auth', ...flags });
+  } else if (command === 'configure' && subcommand === 'llm') {
+    await handleConfigureCommand({ subcommand: 'llm', ...flags });
   } else if (commandHandlers[command]) {
     // Pass flags to command handlers
     await commandHandlers[command](flags);

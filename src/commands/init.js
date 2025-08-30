@@ -7,10 +7,26 @@ import {
   promptRemainingCredentials,
   confirmAction,
 } from '../utils/prompts.js';
+import { shouldUseInteractive } from '../utils/interactive.js';
 
 const SCALEKIT_LOGIN_URL = 'https://auth.scalekit.cloud/a/auth/login';
 
 export async function handleInitCommand(options = {}) {
+  const {
+    provider,
+    clientId,
+    clientSecret,
+    environmentUrl,
+    interactive,
+    noInteractive,
+    ...otherFlags
+  } = options;
+
+  // Handle environmentId separately to avoid redeclaration
+  let environmentId = options.environmentId;
+
+  const useInteractive = shouldUseInteractive({ interactive, noInteractive });
+
   console.log(
     chalk.green(
       "🚀 Welcome to Locksmith! Let's secure your AI applications together...\n"
@@ -34,6 +50,99 @@ export async function handleInitCommand(options = {}) {
         '💡 Try running `locksmith generate` to create secure configs for your applications!'
       )
     );
+    return;
+  }
+
+  // Handle non-interactive mode
+  if (!useInteractive) {
+    console.log(chalk.blue('🔧 Running in non-interactive mode...'));
+
+    // Validate required parameters
+    const missingParams = [];
+    if (!provider) missingParams.push('--provider');
+    if (!environmentId) missingParams.push('--environment-id');
+    if (!clientId) missingParams.push('--client-id');
+    if (!clientSecret) missingParams.push('--client-secret');
+    if (!environmentUrl) missingParams.push('--environment-url');
+
+    if (missingParams.length > 0) {
+      console.log(
+        chalk.red(`❌ Missing required parameters: ${missingParams.join(', ')}`)
+      );
+      console.log(
+        chalk.cyan('💡 Required parameters for non-interactive setup:')
+      );
+      console.log(chalk.white('  • --provider=scalekit'));
+      console.log(chalk.white('  • --environment-id=<your-env-id>'));
+      console.log(chalk.white('  • --client-id=<your-client-id>'));
+      console.log(chalk.white('  • --client-secret=<your-client-secret>'));
+      console.log(chalk.white('  • --environment-url=<your-env-url>'));
+      console.log(chalk.cyan('\n💡 Or use --interactive for guided setup.'));
+      return;
+    }
+
+    if (provider.toLowerCase() !== 'scalekit') {
+      console.log(
+        chalk.red(`❌ Only ScaleKit is supported for non-interactive setup.`)
+      );
+      console.log(
+        chalk.cyan(
+          '💡 Use --provider=scalekit or --interactive for other providers.'
+        )
+      );
+      return;
+    }
+
+    // Non-interactive setup
+    console.log(chalk.cyan('📝 Setting up ScaleKit authentication...'));
+
+    const credentials = {
+      environmentId,
+      clientId,
+      clientSecret,
+      environmentUrl,
+    };
+
+    try {
+      saveCredentials(credentials);
+      console.log(
+        chalk.green('\n🎉 Fantastic! Your Locksmith is now fully configured!')
+      );
+      console.log(
+        chalk.blue(
+          '🔐 Your API credentials are safely stored in ~/.locksmith/credentials.json'
+        )
+      );
+      console.log(
+        chalk.cyan('\n🚀 Ready to secure your apps! Try these next steps:')
+      );
+      console.log(
+        chalk.white('  • ') +
+          chalk.green('locksmith generate') +
+          chalk.gray(' - Create secure configs for your applications')
+      );
+      console.log(
+        chalk.white('  • ') +
+          chalk.green('locksmith add') +
+          chalk.gray(' - Add more authentication providers (coming soon)')
+      );
+      console.log(
+        chalk.white('  • ') +
+          chalk.green('locksmith --help') +
+          chalk.gray(' - See all available commands')
+      );
+    } catch (error) {
+      console.log(
+        chalk.red(
+          `❌ Oops! We couldn't save your credentials: ${error.message}`
+        )
+      );
+      console.log(
+        chalk.cyan(
+          '💡 Try checking file permissions or running with sudo if needed.'
+        )
+      );
+    }
     return;
   }
 
@@ -88,7 +197,7 @@ export async function handleInitCommand(options = {}) {
   );
 
   // First, prompt for Environment ID
-  const environmentId = await promptEnvironmentId();
+  environmentId = await promptEnvironmentId();
 
   if (!environmentId) {
     console.log(chalk.red('❌ We need your Environment ID to continue.'));
