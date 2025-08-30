@@ -26,15 +26,48 @@ export async function handleGenerateCommand(options = {}) {
     let selectedFormat = format;
     if (!selectedFormat) {
       if (handler.useInteractive) {
-        const formatChoices = SUPPORTED_FORMATS.map((f) => ({
-          name: `${f.toUpperCase()} format`,
-          value: f,
-          short: f,
-        }));
+        const formatChoices = SUPPORTED_FORMATS.map((f) => {
+          const isDefault = f === DEFAULT_FORMAT;
+          let description, name;
+
+          switch (f) {
+            case 'json':
+              name = `${f.toUpperCase()} format ${
+                isDefault ? '(recommended)' : ''
+              }`;
+              description =
+                'Structured data format, great for programmatic use';
+              break;
+            case 'yaml':
+              name = `${f.toUpperCase()} format`;
+              description = 'Human-readable configuration format';
+              break;
+            case 'env':
+              name = `${f.toUpperCase()} format`;
+              description = 'Environment variables format for shell scripts';
+              break;
+            default:
+              name = `${f.toUpperCase()} format`;
+              description = `${f.toUpperCase()} configuration format`;
+          }
+
+          return {
+            name,
+            value: f,
+            short: f,
+            description,
+          };
+        });
+
+        console.log(chalk.cyan('📋 Format Selection:'));
+        console.log(
+          chalk.gray('  Choose the output format that best fits your needs:')
+        );
+        console.log();
 
         selectedFormat = await selectIfInteractive(
-          useInteractive,
-          'Select output format:',
+          handler.useInteractive,
+          'Select output format for your configurations:',
           formatChoices,
           DEFAULT_FORMAT
         );
@@ -95,20 +128,46 @@ export async function handleGenerateCommand(options = {}) {
       }, Count: ${itemCount}, Dry run: ${handler.isDryRun() ? 'Yes' : 'No'}`
     );
 
-    // Interactive confirmation
+    // Interactive confirmation with detailed summary
     if (handler.useInteractive && !handler.isDryRun()) {
+      console.log(chalk.blue('📋 Generation Summary:'));
+      console.log(chalk.gray(`  Format: ${selectedFormat.toUpperCase()}`));
+      console.log(chalk.gray(`  Output: ${outputPath || 'stdout'}`));
+      console.log(
+        chalk.gray(
+          `  Count: ${itemCount} configuration${itemCount > 1 ? 's' : ''}`
+        )
+      );
+      console.log(chalk.gray(`  Generated at: ${new Date().toISOString()}`));
+
+      if (selectedFormat === 'json') {
+        console.log(
+          chalk.gray('  📄 JSON format will include structured auth data')
+        );
+      } else if (selectedFormat === 'yaml') {
+        console.log(
+          chalk.gray('  📄 YAML format will be human-readable and structured')
+        );
+      } else if (selectedFormat === 'env') {
+        console.log(
+          chalk.gray('  📄 ENV format will contain shell environment variables')
+        );
+      }
+
+      console.log();
+
       const shouldProceed = await confirmIfInteractive(
         handler.useInteractive,
-        `Generate ${itemCount} configuration${
+        `Ready to generate ${itemCount} configuration${
           itemCount > 1 ? 's' : ''
-        } in ${selectedFormat.toUpperCase()} format${
-          outputPath ? ` to ${outputPath}` : ''
         }?`,
         true
       );
 
       if (!shouldProceed) {
-        handler.showInfo('Generation cancelled.');
+        console.log(
+          chalk.cyan('💡 Generation cancelled. No files were created.')
+        );
         return CommandResult.success('Generation cancelled by user');
       }
     }

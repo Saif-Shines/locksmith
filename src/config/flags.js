@@ -86,6 +86,11 @@ export const VALUE_FLAGS = {
     desc: 'Preferred LLM broker (gemini, claude, cursor-agent)',
     shortFlag: 'b',
   },
+  redirects: {
+    type: 'boolean',
+    desc: 'Configure redirect URLs in authentication provider',
+    shortFlag: 'r',
+  },
 };
 
 // Global flags (available for all commands)

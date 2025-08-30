@@ -32,6 +32,38 @@ export async function handleAddCommand(options = {}) {
         )
       );
       selectedProvider = await promptAuthProvider();
+
+      // Add conditional follow-up for provider-specific guidance
+      if (selectedProvider) {
+        const providerLower = selectedProvider.toLowerCase();
+        if (providerLower === 'auth0') {
+          console.log(chalk.yellow('🚧 Auth0 Integration:'));
+          console.log(
+            chalk.gray('  • Coming soon - full Auth0 support in development')
+          );
+          console.log(
+            chalk.gray(
+              "  • You'll be able to configure Domain, Client ID, and Client Secret"
+            )
+          );
+          console.log(
+            chalk.cyan('  💡 For now, please select a different provider\n')
+          );
+        } else if (providerLower === 'fusionauth') {
+          console.log(chalk.yellow('🚧 FusionAuth Integration:'));
+          console.log(
+            chalk.gray(
+              '  • Coming soon - full FusionAuth support in development'
+            )
+          );
+          console.log(
+            chalk.gray("  • You'll be able to configure API Key and Base URL")
+          );
+          console.log(
+            chalk.cyan('  💡 For now, please select a different provider\n')
+          );
+        }
+      }
     } else {
       console.log(
         chalk.red('❌ Provider is required when not in interactive mode.')
@@ -46,22 +78,27 @@ export async function handleAddCommand(options = {}) {
     }
   }
 
-  // Check if provider is already configured
+  // Enhanced validation with better error messages
   if (!SUPPORTED_PROVIDERS.includes(selectedProvider.toLowerCase())) {
     console.log(chalk.red(`❌ Unsupported provider: ${selectedProvider}`));
     console.log(
       chalk.cyan('💡 Supported providers:'),
       chalk.white(SUPPORTED_PROVIDERS.join(', '))
     );
+    console.log(chalk.cyan('💡 Use --interactive for guided selection'));
     return;
   }
 
+  // Check if provider is already configured with better messaging
   if (selectedProvider.toLowerCase() === 'scalekit') {
     console.log(chalk.yellow('⚠️  ScaleKit is already your primary provider.'));
     console.log(
       chalk.cyan(
         '💡 Use "locksmith configure auth --provider=scalekit" to reconfigure.'
       )
+    );
+    console.log(
+      chalk.cyan('💡 Or add a different provider for multi-provider support.')
     );
     return;
   }
@@ -76,16 +113,30 @@ export async function handleAddCommand(options = {}) {
     console.log(chalk.gray(`  Dry run: ${dryRun ? 'Yes' : 'No'}`));
   }
 
-  // Interactive confirmation
+  // Interactive confirmation with detailed summary
   if (useInteractive && !dryRun) {
+    console.log(chalk.blue('📋 Provider Addition Summary:'));
+    console.log(chalk.gray(`  Provider: ${selectedProvider}`));
+    console.log(chalk.gray(`  Type: Additional authentication provider`));
+    console.log(chalk.gray(`  Added at: ${new Date().toISOString()}`));
+    console.log(
+      chalk.gray(
+        '  📋 This will enable multi-provider authentication in your app'
+      )
+    );
+
+    console.log();
+
     const shouldProceed = await confirmIfInteractive(
       useInteractive,
-      `Do you want to add ${selectedProvider} as an additional authentication provider?`,
+      `Add ${selectedProvider} as an additional authentication provider?`,
       true
     );
 
     if (!shouldProceed) {
-      console.log(chalk.cyan('💡 Provider addition cancelled.'));
+      console.log(
+        chalk.cyan('💡 Provider addition cancelled. No changes were made.')
+      );
       return;
     }
   }

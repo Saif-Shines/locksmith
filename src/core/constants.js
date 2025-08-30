@@ -6,6 +6,8 @@
 // Authentication Providers
 export const SUPPORTED_PROVIDERS = ['scalekit', 'auth0', 'fusionauth'];
 
+export const SUPPORTED_AUTH_MODULES = ['full-stack-auth', 'sso', 'mcp'];
+
 // LLM Brokers
 export const AVAILABLE_BROKERS = ['gemini', 'claude', 'cursor-agent'];
 export const DEFAULT_BROKER = 'gemini';

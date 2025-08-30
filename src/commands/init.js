@@ -89,6 +89,11 @@ export async function handleInitCommand(options = {}) {
           '💡 Use --provider=scalekit or --interactive for other providers.'
         )
       );
+      console.log(
+        chalk.cyan(
+          '💡 Interactive mode supports Auth0 and FusionAuth (coming soon).'
+        )
+      );
       return;
     }
 
@@ -101,6 +106,16 @@ export async function handleInitCommand(options = {}) {
       clientSecret,
       environmentUrl,
     };
+
+    // Final confirmation in non-interactive mode
+    console.log(chalk.blue('📋 Configuration Summary:'));
+    console.log(chalk.gray(`  Provider: ScaleKit`));
+    console.log(chalk.gray(`  Environment ID: ${environmentId}`));
+    console.log(chalk.gray(`  Client ID: ${clientId}`));
+    console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
+    console.log(chalk.gray('  🔐 Credentials will be saved securely'));
+
+    console.log();
 
     try {
       saveCredentials(credentials);
@@ -148,11 +163,49 @@ export async function handleInitCommand(options = {}) {
   // Prompt for auth provider selection
   const selectedProvider = await promptAuthProvider();
 
+  // Add provider-specific guidance
+  if (selectedProvider) {
+    const providerLower = selectedProvider.toLowerCase();
+    if (providerLower === 'scalekit') {
+      console.log(chalk.blue('📋 ScaleKit Setup:'));
+      console.log(
+        chalk.gray('  • Enterprise-grade authentication for AI applications')
+      );
+      console.log(
+        chalk.gray('  • Supports SSO, multi-tenant, and custom auth flows')
+      );
+      console.log(chalk.gray('  • Perfect for production AI applications'));
+      console.log(
+        chalk.cyan("  💡 We'll help you set up your API credentials securely\n")
+      );
+    } else if (providerLower === 'auth0') {
+      console.log(chalk.yellow('🚧 Auth0 Integration:'));
+      console.log(chalk.gray('  • Full Auth0 support is coming soon'));
+      console.log(
+        chalk.gray(
+          "  • You'll be able to configure Domain, Client ID, and Client Secret"
+        )
+      );
+      console.log(
+        chalk.cyan('  💡 For now, please select ScaleKit to continue\n')
+      );
+      return;
+    } else if (providerLower === 'fusionauth') {
+      console.log(chalk.yellow('🚧 FusionAuth Integration:'));
+      console.log(chalk.gray('  • Full FusionAuth support is coming soon'));
+      console.log(
+        chalk.gray("  • You'll be able to configure API Key and Base URL")
+      );
+      console.log(
+        chalk.cyan('  💡 For now, please select ScaleKit to continue\n')
+      );
+      return;
+    }
+  }
+
   if (selectedProvider !== 'scalekit') {
     console.log(
-      chalk.yellow(
-        '\n⚠️  Heads up! Only ScaleKit is available for setup right now.'
-      )
+      chalk.yellow('\n⚠️  Only ScaleKit is available for setup right now.')
     );
     console.log(
       chalk.cyan(
@@ -272,6 +325,32 @@ export async function handleInitCommand(options = {}) {
       chalk.green(
         'Please try running `locksmith init` again with complete credentials.'
       )
+    );
+    return;
+  }
+
+  // Interactive confirmation before saving
+  console.log(chalk.blue('📋 Setup Summary:'));
+  console.log(chalk.gray(`  Provider: ScaleKit`));
+  console.log(chalk.gray(`  Environment ID: ${credentials.environmentId}`));
+  console.log(chalk.gray(`  Client ID: ${credentials.clientId}`));
+  console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
+  console.log(
+    chalk.gray(
+      '  🔐 Credentials will be saved securely to ~/.locksmith/credentials.json'
+    )
+  );
+
+  console.log();
+
+  const shouldSave = await confirmAction(
+    'Save these authentication credentials?'
+  );
+
+  if (!shouldSave) {
+    console.log(chalk.cyan('💡 Setup cancelled. No credentials were saved.'));
+    console.log(
+      chalk.cyan("💡 You can run `locksmith init` again whenever you're ready.")
     );
     return;
   }
