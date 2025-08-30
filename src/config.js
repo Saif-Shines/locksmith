@@ -18,7 +18,9 @@ export const COMMANDS = {
     desc: 'Configure authentication settings',
     subcommands: {
       auth: { desc: 'Configure auth provider settings' },
-      llm: { desc: 'Configure preferred LLM broker (gemini, claude, cursor-agent)' },
+      llm: {
+        desc: 'Configure preferred LLM broker (gemini, claude, cursor-agent)',
+      },
     },
   },
   add: { desc: 'Add authentication providers' },

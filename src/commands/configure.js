@@ -176,7 +176,8 @@ async function handleConfigureAuth(options = {}) {
 }
 
 async function handleConfigureLLMBroker(options = {}) {
-  const { broker, dryRun, verbose, force, interactive, noInteractive } = options;
+  const { broker, dryRun, verbose, force, interactive, noInteractive } =
+    options;
 
   const useInteractive = shouldUseInteractive({ interactive, noInteractive });
 
@@ -209,18 +210,23 @@ async function handleConfigureLLMBroker(options = {}) {
     // Handle broker selection
     if (!selectedBroker) {
       if (useInteractive) {
-        console.log(chalk.cyan('💡 No broker specified. Starting interactive selection...'));
+        console.log(
+          chalk.cyan(
+            '💡 No broker specified. Starting interactive selection...'
+          )
+        );
 
         // Create choices with availability status
-        const brokerChoices = availableBrokers.map(brokerName => {
-          const available = detectedTools[brokerName.replace('-agent', '')] || false;
+        const brokerChoices = availableBrokers.map((brokerName) => {
+          const available =
+            detectedTools[brokerName.replace('-agent', '')] || false;
           const status = available
             ? chalk.green('✅ Available')
             : chalk.yellow('⚠️  Not detected');
           return {
             name: `${brokerName} ${status}`,
             value: brokerName,
-            short: brokerName
+            short: brokerName,
           };
         });
 
@@ -232,7 +238,9 @@ async function handleConfigureLLMBroker(options = {}) {
           'gemini'
         );
       } else {
-        console.log(chalk.red('❌ Broker is required when not in interactive mode.'));
+        console.log(
+          chalk.red('❌ Broker is required when not in interactive mode.')
+        );
         console.log(
           chalk.cyan('💡 Use --broker flag or --interactive for guided setup:')
         );
@@ -294,7 +302,11 @@ async function handleConfigureLLMBroker(options = {}) {
       if (verbose) {
         console.log(chalk.gray('📋 Configuration summary:'));
         console.log(chalk.gray(`  Preferred broker: ${selectedBroker}`));
-        console.log(chalk.gray(`  Available tools: ${availableTools.join(', ') || 'none'}`));
+        console.log(
+          chalk.gray(
+            `  Available tools: ${availableTools.join(', ') || 'none'}`
+          )
+        );
         console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
       }
 
@@ -303,21 +315,29 @@ async function handleConfigureLLMBroker(options = {}) {
       );
     } else {
       console.log(
-        chalk.yellow('🔍 Would configure LLM broker with the following settings:')
+        chalk.yellow(
+          '🔍 Would configure LLM broker with the following settings:'
+        )
       );
       console.log(chalk.gray(`  Preferred broker: ${selectedBroker}`));
       const availableTools = Object.entries(detectedTools)
         .filter(([, available]) => available)
         .map(([tool]) => tool);
-      console.log(chalk.gray(`  Available tools: ${availableTools.join(', ') || 'none'}`));
+      console.log(
+        chalk.gray(`  Available tools: ${availableTools.join(', ') || 'none'}`)
+      );
       console.log(chalk.gray('  No actual changes made (dry run)'));
     }
 
     console.log(chalk.cyan('\n🚀 Ready to use your LLM broker!'));
-    console.log(chalk.white(`  • Your preferred broker is set to: ${selectedBroker}`));
+    console.log(
+      chalk.white(`  • Your preferred broker is set to: ${selectedBroker}`)
+    );
     console.log(chalk.white('  • Future commands will use this preference'));
   } catch (error) {
-    console.log(chalk.red(`❌ Failed to configure LLM broker: ${error.message}`));
+    console.log(
+      chalk.red(`❌ Failed to configure LLM broker: ${error.message}`)
+    );
     if (verbose) {
       console.log(chalk.gray('📋 Error details:'), error);
     }
