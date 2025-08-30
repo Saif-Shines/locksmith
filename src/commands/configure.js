@@ -456,16 +456,24 @@ function saveBrokerConfiguration(
   dryRun,
   verbose
 ) {
+  // Show configuration summary before saving
+  const availableTools = Object.entries(detectedTools)
+    .filter(([, available]) => available)
+    .map(([tool]) => tool);
+
+  console.log(chalk.blue('📋 LLM Broker Configuration Summary:'));
+  console.log(chalk.gray(`  Preferred broker: ${selectedBroker}`));
+  console.log(
+    chalk.gray(
+      `  Available tools: ${availableTools.join(', ') || 'none detected'}`
+    )
+  );
+  console.log(chalk.gray(`  Configured at: ${new Date().toISOString()}`));
+  console.log();
+
   if (dryRun) {
     console.log(
       chalk.yellow('🔍 Would configure LLM broker with the following settings:')
-    );
-    console.log(chalk.gray(`  Preferred broker: ${selectedBroker}`));
-    const availableTools = Object.entries(detectedTools)
-      .filter(([, available]) => available)
-      .map(([tool]) => tool);
-    console.log(
-      chalk.gray(`  Available tools: ${availableTools.join(', ') || 'none'}`)
     );
     console.log(chalk.gray('  No actual changes made (dry run)'));
     return;
@@ -473,10 +481,6 @@ function saveBrokerConfiguration(
 
   saveToolDetection(detectedTools);
   savePreferredBroker(selectedBroker);
-
-  const availableTools = Object.entries(detectedTools)
-    .filter(([, available]) => available)
-    .map(([tool]) => tool);
 
   console.log(chalk.green('✅ LLM broker configured successfully!'));
   console.log(chalk.blue('🤖 Preferred broker:'), chalk.white(selectedBroker));
@@ -863,21 +867,7 @@ async function handleConfigureLLMBroker(options = {}) {
     }
     const { selectedBroker } = brokerValidation;
 
-    // 3. Confirm configuration
-    const confirmed = await confirmBrokerConfiguration(
-      selectedBroker,
-      detectedTools,
-      {
-        useInteractive,
-        force,
-        dryRun,
-      }
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    // 4. Save configuration
+    // 3. Save configuration (no confirmation needed for low-risk broker selection)
     saveBrokerConfiguration(selectedBroker, detectedTools, dryRun, verbose);
   } catch (error) {
     console.log(
