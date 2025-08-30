@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import open from 'open';
+import ora from 'ora';
 import {
   shouldUseInteractive,
   confirmIfInteractive,
@@ -451,17 +452,37 @@ export async function handleAddCommand(options = {}) {
   );
 
   // 1. Validate credentials and handle init if needed
+  const credentialsSpinner = ora({
+    text: '🔐 Validating authentication credentials...',
+    color: 'blue',
+    spinner: 'dots',
+  }).start();
+
   const credentialsValid = await validateCredentials(useInteractive);
   if (!credentialsValid) {
+    credentialsSpinner.fail('❌ Credential validation failed');
     return;
   }
+  credentialsSpinner.succeed('✅ Credentials validated');
 
   // 2. Handle module selection
+  const moduleSpinner = ora({
+    text: '📦 Selecting authentication modules...',
+    color: 'cyan',
+    spinner: 'dots',
+  }).start();
+
   const moduleSelection = await selectModules({ module, useInteractive });
   if (!moduleSelection.shouldContinue) {
+    moduleSpinner.fail('❌ Module selection cancelled');
     return;
   }
   const { selectedModules } = moduleSelection;
+  moduleSpinner.succeed(
+    `✅ Selected ${selectedModules.length} module(s): ${selectedModules.join(
+      ', '
+    )}`
+  );
 
   // 3. Display dry run and verbose information
   if (dryRun) {
@@ -486,6 +507,12 @@ export async function handleAddCommand(options = {}) {
   }
 
   // 5. Get user confirmation
+  const confirmationSpinner = ora({
+    text: '📋 Preparing module configuration...',
+    color: 'yellow',
+    spinner: 'dots',
+  }).start();
+
   const confirmed = await confirmModuleAddition(
     selectedModules,
     configureRedirects,
@@ -493,30 +520,40 @@ export async function handleAddCommand(options = {}) {
     dryRun
   );
   if (!confirmed) {
+    confirmationSpinner.fail('❌ Module addition cancelled');
     return;
   }
+  confirmationSpinner.succeed('✅ Configuration confirmed');
 
   // 6. Handle redirects configuration if requested
   let callbackUri = null;
   if (configureRedirects && !dryRun) {
     console.log();
-    console.log(chalk.cyan('🔗 Configuring redirect URLs...'));
+    const redirectSpinner = ora({
+      text: '🔗 Configuring redirect URLs...',
+      color: 'cyan',
+      spinner: 'dots',
+    }).start();
+
     try {
       callbackUri = await handleRedirectConfiguration({
         useInteractive,
         verbose,
       });
+      redirectSpinner.succeed('✅ Redirect URLs configured');
     } catch (error) {
-      console.log(
-        chalk.yellow(
-          '⚠️  Redirect configuration failed, but continuing with module setup.'
-        )
-      );
-      console.log(chalk.gray(`Error: ${error.message}`));
+      redirectSpinner.warn('⚠️ Redirect configuration skipped');
+      console.log(chalk.gray(`Note: ${error.message}`));
     }
   }
 
   // 7. Save modules and configuration
+  const saveSpinner = ora({
+    text: '💾 Saving authentication modules...',
+    color: 'green',
+    spinner: 'dots',
+  }).start();
+
   const success = saveModulesAndConfiguration(
     selectedModules,
     callbackUri,
@@ -524,6 +561,8 @@ export async function handleAddCommand(options = {}) {
     verbose
   );
   if (!success) {
+    saveSpinner.fail('❌ Failed to save configuration');
     return;
   }
+  saveSpinner.succeed('✅ Authentication modules added successfully');
 }

@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 import os from 'os';
+import ora from 'ora';
 
 /**
  * Simple command existence check
@@ -45,6 +46,47 @@ export function detectTools() {
     gemini: hasGemini(),
     cursor: hasCursor(),
   };
+}
+
+/**
+ * Detect tools with progress indicator
+ */
+export function detectToolsWithProgress(verbose = false) {
+  const spinner = ora({
+    text: '🔍 Detecting available AI tools...',
+    color: 'cyan',
+    spinner: 'dots',
+  });
+
+  if (!verbose) {
+    spinner.start();
+  }
+
+  try {
+    const results = {
+      claude: hasClaudeCode(),
+      gemini: hasGemini(),
+      cursor: hasCursor(),
+    };
+
+    if (!verbose) {
+      const availableCount = Object.values(results).filter(Boolean).length;
+      const totalCount = Object.keys(results).length;
+
+      if (availableCount > 0) {
+        spinner.succeed(`✅ Detected ${availableCount}/${totalCount} AI tools`);
+      } else {
+        spinner.warn(`⚠️ No AI tools detected (${totalCount} checked)`);
+      }
+    }
+
+    return results;
+  } catch (error) {
+    if (!verbose) {
+      spinner.fail('❌ Failed to detect AI tools');
+    }
+    throw error;
+  }
 }
 
 /**

@@ -3,6 +3,7 @@ import { execa } from 'execa';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import ora from 'ora';
 
 // Using alias files for cleaner imports
 import {
@@ -726,44 +727,68 @@ async function promptMissingLLMBroker(handler) {
  * Comprehensive setup validation with targeted prompts
  */
 async function ensureCompleteSetup(handler) {
-  console.log(chalk.blue('🔍 Checking Locksmith setup...\n'));
+  const setupSpinner = ora({
+    text: '🔍 Validating Locksmith setup...',
+    color: 'blue',
+    spinner: 'dots',
+  }).start();
 
-  // 1. Check auth credentials
-  if (!hasCredentials()) {
-    const success = await promptMissingCredentials(handler);
-    if (!success) {
-      return false;
+  try {
+    // 1. Check auth credentials
+    setupSpinner.text = '🔐 Checking authentication credentials...';
+    if (!hasCredentials()) {
+      setupSpinner.stop();
+      const success = await promptMissingCredentials(handler);
+      if (!success) {
+        return false;
+      }
+      setupSpinner.start();
     }
-  }
 
-  // 2. Check callback URI
-  const callbackUri = getCallbackUri();
-  if (!callbackUri) {
-    const success = await promptMissingCallbackUri(handler);
-    if (!success) {
-      return false;
+    // 2. Check callback URI
+    setupSpinner.text = '🔗 Checking callback URI configuration...';
+    const callbackUri = getCallbackUri();
+    if (!callbackUri) {
+      setupSpinner.stop();
+      const success = await promptMissingCallbackUri(handler);
+      if (!success) {
+        return false;
+      }
+      setupSpinner.start();
     }
-  }
 
-  // 3. Check auth modules
-  if (!hasAuthModules()) {
-    const success = await promptMissingAuthModules(handler);
-    if (!success) {
-      return false;
+    // 3. Check auth modules
+    setupSpinner.text = '📦 Checking authentication modules...';
+    if (!hasAuthModules()) {
+      setupSpinner.stop();
+      const success = await promptMissingAuthModules(handler);
+      if (!success) {
+        return false;
+      }
+      setupSpinner.start();
     }
-  }
 
-  // 4. Check LLM broker
-  const preferredBroker = loadPreferredBroker();
-  if (!preferredBroker) {
-    const success = await promptMissingLLMBroker(handler);
-    if (!success) {
-      return false;
+    // 4. Check LLM broker
+    setupSpinner.text = '🤖 Checking LLM broker configuration...';
+    const preferredBroker = loadPreferredBroker();
+    if (!preferredBroker) {
+      setupSpinner.stop();
+      const success = await promptMissingLLMBroker(handler);
+      if (!success) {
+        return false;
+      }
+      setupSpinner.start();
     }
-  }
 
-  console.log(chalk.green('🎉 Setup complete! All prerequisites met.\n'));
-  return true;
+    setupSpinner.succeed('✅ Setup validation complete');
+    console.log(
+      chalk.green('🎉 All prerequisites met and ready for generation.\n')
+    );
+    return true;
+  } catch (error) {
+    setupSpinner.fail('❌ Setup validation failed');
+    throw error;
+  }
 }
 
 export async function handleGenerateCommand(options = {}) {
@@ -828,26 +853,41 @@ export async function handleGenerateCommand(options = {}) {
     // Execute with configured LLM broker
     const preferredBroker = (loadPreferredBroker() || '').toLowerCase();
 
-    switch (preferredBroker) {
-      case 'claude':
-        await handleClaudeIntegration(handler, combinedPrompt, verbose);
-        break;
-      case 'gemini':
-        await handleGeminiIntegration(handler, combinedPrompt, verbose);
-        break;
-      case 'cursor-agent':
-        await handleCursorAgentIntegration(handler, combinedPrompt, verbose);
-        break;
-      default:
-        console.log(
-          chalk.yellow(
-            `⚠️  Broker "${preferredBroker}" is not supported for generation.`
-          )
-        );
-        console.log(
-          chalk.cyan('💡 Supported brokers: claude, gemini, cursor-agent')
-        );
-        break;
+    const generationSpinner = ora({
+      text: `🚀 Generating configurations with ${preferredBroker}...`,
+      color: 'green',
+      spinner: 'dots',
+    }).start();
+
+    try {
+      switch (preferredBroker) {
+        case 'claude':
+          await handleClaudeIntegration(handler, combinedPrompt, verbose);
+          break;
+        case 'gemini':
+          await handleGeminiIntegration(handler, combinedPrompt, verbose);
+          break;
+        case 'cursor':
+          await handleCursorAgentIntegration(handler, combinedPrompt, verbose);
+          break;
+        default:
+          generationSpinner.fail(
+            `❌ Unsupported LLM broker: ${preferredBroker}`
+          );
+          console.log(
+            chalk.cyan('💡 Supported brokers: claude, gemini, cursor')
+          );
+          return CommandResult.error(
+            `Unsupported LLM broker: ${preferredBroker}. Supported: claude, gemini, cursor`
+          );
+      }
+
+      generationSpinner.succeed(
+        `✅ Configuration generation complete with ${preferredBroker}`
+      );
+    } catch (error) {
+      generationSpinner.fail(`❌ Generation failed with ${preferredBroker}`);
+      throw error;
     }
 
     return CommandResult.success('Generation process completed');

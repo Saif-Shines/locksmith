@@ -8,7 +8,10 @@ import {
   saveAuthModules,
   loadAuthModules,
 } from '../utils/core/config.js';
-import { detectTools } from '../utils/core/detection.js';
+import {
+  detectTools,
+  detectToolsWithProgress,
+} from '../utils/core/detection.js';
 import {
   shouldUseInteractive,
   selectIfInteractive,
@@ -273,7 +276,9 @@ function detectAvailableTools(verbose) {
     console.log(chalk.blue('📋 Detecting installed AI tools...'));
   }
 
-  const detectedTools = detectTools();
+  const detectedTools = verbose
+    ? detectTools()
+    : detectToolsWithProgress(verbose);
 
   if (verbose) {
     console.log(chalk.blue('📋 Detection results:'));

@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import open from 'open';
+import ora from 'ora';
 import { saveCredentials, hasCredentials } from '../utils/core/config.js';
 import {
   ErrorScenarios,
@@ -424,35 +425,85 @@ export async function handleInitCommand(options = {}) {
   }
 
   // 3. Handle interactive provider selection
+  const providerSpinner = ora({
+    text: '🔍 Selecting authentication provider...',
+    color: 'blue',
+    spinner: 'dots',
+  }).start();
+
   const selectedProvider = await handleProviderSelection();
   if (!selectedProvider) {
+    providerSpinner.fail('❌ Provider selection cancelled');
     return;
   }
+  providerSpinner.succeed('✅ ScaleKit selected as authentication provider');
 
   console.log(
     chalk.green("\n🚀 Let's get you set up with ScaleKit authentication!\n")
   );
 
   // 4. Open ScaleKit signup page
+  const signupSpinner = ora({
+    text: '🌐 Opening ScaleKit signup page...',
+    color: 'cyan',
+    spinner: 'dots',
+  }).start();
+
   await openScaleKitSignup();
+  signupSpinner.succeed('✅ ScaleKit signup page opened');
 
   // 5. Collect environment ID
+  const envSpinner = ora({
+    text: '🔑 Collecting environment ID...',
+    color: 'yellow',
+    spinner: 'dots',
+  }).start();
+
   const collectedEnvironmentId = await collectEnvironmentId();
   if (!collectedEnvironmentId) {
+    envSpinner.fail('❌ Environment ID collection failed');
     return;
   }
+  envSpinner.succeed('✅ Environment ID collected');
 
   // 6. Open API credentials page
+  const credentialsSpinner = ora({
+    text: '🔐 Opening API credentials page...',
+    color: 'cyan',
+    spinner: 'dots',
+  }).start();
+
   await openApiCredentialsPage(collectedEnvironmentId);
+  credentialsSpinner.succeed('✅ API credentials page opened');
 
   // 7. Collect and validate remaining credentials
+  const collectSpinner = ora({
+    text: '📝 Collecting API credentials...',
+    color: 'green',
+    spinner: 'dots',
+  }).start();
+
   const credentials = await collectAndValidateCredentials(
     collectedEnvironmentId
   );
   if (!credentials) {
+    collectSpinner.fail('❌ Credential collection failed');
     return;
   }
+  collectSpinner.succeed('✅ API credentials collected and validated');
 
   // 8. Confirm and save credentials
-  await confirmAndSaveCredentials(credentials);
+  const saveSpinner = ora({
+    text: '💾 Saving authentication configuration...',
+    color: 'green',
+    spinner: 'dots',
+  }).start();
+
+  try {
+    await confirmAndSaveCredentials(credentials);
+    saveSpinner.succeed('✅ Authentication setup complete!');
+  } catch (error) {
+    saveSpinner.fail('❌ Failed to save authentication configuration');
+    throw error;
+  }
 }
