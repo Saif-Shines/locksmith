@@ -40,7 +40,16 @@ export const VALUE_FLAGS = {
     desc: 'Output file path',
     shortFlag: 'o',
   },
-
+  module: {
+    type: 'string',
+    desc: 'Authentication module to add (full-stack-auth, sso, mcp)',
+    shortFlag: 'm',
+  },
+  promptOut: {
+    type: 'string',
+    desc: 'Save generation prompt to specified file path',
+    shortFlag: 'O',
+  },
   value: {
     type: 'string',
     desc: 'Configuration value to set',

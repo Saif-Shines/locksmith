@@ -302,6 +302,9 @@ function generateGenerateHelp(flags) {
       '--prompt-out=file.txt'
     )} - Save generation prompt to file\n`;
     help += `• ${chalk.white(
+      '-O file.txt'
+    )} - Save generation prompt to file (short form)\n`;
+    help += `• ${chalk.white(
       '--dry-run'
     )} - Preview without generating files\n`;
     help += `• ${chalk.white(

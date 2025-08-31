@@ -822,12 +822,7 @@ async function ensureCompleteSetup(handler) {
 export async function handleGenerateCommand(options = {}) {
   return await ErrorHandler.withErrorHandling(async () => {
     const handler = new CommandHandler(options);
-    const {
-      verbose,
-      module: moduleFlag,
-      'prompt-out': promptOutPath,
-      promptOut,
-    } = options;
+    const { verbose, module: moduleFlag, promptOut } = options;
 
     handler.showInfo(
       'Generating secure configurations for your AI applications...',
@@ -860,9 +855,8 @@ export async function handleGenerateCommand(options = {}) {
 
     // Build and optionally save the generation prompt
     const combinedPrompt = buildGenerationPrompt(selectedModules);
-    const promptSavePath = promptOutPath || promptOut;
-    if (promptSavePath) {
-      savePromptToFile(combinedPrompt, promptSavePath);
+    if (promptOut) {
+      savePromptToFile(combinedPrompt, promptOut);
     }
 
     // Log generation details
