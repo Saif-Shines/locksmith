@@ -6,13 +6,26 @@ import Conf from 'conf';
 
 const CONFIG_DIR = path.join(os.homedir(), '.locksmith');
 
+// Ensure the config directory exists before initializing Conf stores
+function ensureConfigDirEarly() {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+  } catch (e) {
+    // Do not throw here; downstream calls will surface errors
+  }
+}
+
+ensureConfigDirEarly();
+
 // Initialize conf instances for each config file
 // Note: Schema validation removed to avoid JSON schema compatibility issues
 // The conf library provides atomic writes and better error handling without schemas
 const credentialsConfig = new Conf({
   projectName: 'locksmith',
   projectSuffix: '',
-  cwd: os.homedir(),
+  cwd: CONFIG_DIR,
   configName: 'credentials',
   fileExtension: 'json',
   defaults: {},
@@ -22,7 +35,7 @@ const credentialsConfig = new Conf({
 const toolsConfig = new Conf({
   projectName: 'locksmith',
   projectSuffix: '',
-  cwd: os.homedir(),
+  cwd: CONFIG_DIR,
   configName: 'llm-brokers',
   fileExtension: 'json',
   defaults: {
@@ -36,7 +49,7 @@ const toolsConfig = new Conf({
 const authModulesConfig = new Conf({
   projectName: 'locksmith',
   projectSuffix: '',
-  cwd: os.homedir(),
+  cwd: CONFIG_DIR,
   configName: 'auth-modules',
   fileExtension: 'json',
   defaults: {
