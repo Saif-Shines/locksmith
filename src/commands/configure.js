@@ -622,37 +622,19 @@ async function confirmRedirectConfiguration(
   provider,
   environmentId
 ) {
-  if (!useInteractive) {
-    return true;
-  }
-
-  console.log(chalk.blue('📋 Redirect Configuration:'));
-  console.log(chalk.gray(`  Provider: ${provider}`));
-  console.log(chalk.gray(`  Environment: ${environmentId}`));
-  console.log(
-    chalk.gray('  🔗 This will open your browser to configure redirect URLs')
-  );
-  console.log(
-    chalk.gray('  📋 Redirect URLs are required for authentication modules')
-  );
-  console.log();
-
-  const shouldContinue = await confirmIfInteractive(
-    useInteractive,
-    'Open browser to configure redirect URLs?',
-    true
-  );
-
-  if (!shouldContinue) {
-    console.log(chalk.cyan('💡 Redirect configuration cancelled.'));
+  // No confirmation needed; just display context and proceed
+  if (useInteractive) {
+    console.log(chalk.blue('📋 Redirect Configuration:'));
+    console.log(chalk.gray(`  Provider: ${provider}`));
+    console.log(chalk.gray(`  Environment: ${environmentId}`));
     console.log(
-      chalk.cyan(
-        '💡 You can configure redirects later in your ScaleKit dashboard.'
-      )
+      chalk.gray('  🔗 Opening your browser to configure redirect URLs...')
     );
-    return false;
+    console.log(
+      chalk.gray('  📋 Redirect URLs are required for authentication modules')
+    );
+    console.log();
   }
-
   return true;
 }
 
@@ -663,30 +645,24 @@ async function promptForCallbackUri() {
   const callbackUri = await promptIfInteractive(
     true,
     'Enter the callback URI you configured in ScaleKit (e.g., http://localhost:3000/auth/callback):',
-    ''
+    '',
+    {
+      validate: (input) => {
+        const value = String(input || '').trim();
+        if (!value) return 'Callback URI is required';
+        const urlPattern = /^https?:\/\/.+$/;
+        return urlPattern.test(value)
+          ? true
+          : 'Enter a valid http(s) URL (e.g., http://localhost:3000/auth/callback)';
+      },
+    }
   );
 
-  if (!callbackUri || callbackUri.trim() === '') {
-    console.log(
-      chalk.yellow('⚠️  No callback URI provided. You can configure it later.')
-    );
-    return null;
-  }
-
-  const urlPattern = /^https?:\/\/.+$/;
-  if (!urlPattern.test(callbackUri.trim())) {
-    console.log(
-      chalk.yellow(
-        '⚠️  Invalid URL format. Please provide a valid callback URI.'
-      )
-    );
-    return null;
-  }
-
+  const trimmed = String(callbackUri).trim();
   console.log(chalk.green('✅ Callback URI configured successfully!'));
-  console.log(chalk.gray(`  URI: ${callbackUri.trim()}`));
+  console.log(chalk.gray(`  URI: ${trimmed}`));
 
-  return callbackUri.trim();
+  return trimmed;
 }
 
 /**
@@ -712,26 +688,6 @@ async function handlePostRedirectFlow(useInteractive) {
       '  • You can add multiple redirect URLs for different environments'
     )
   );
-
-  const shouldContinueToAuth = await confirmIfInteractive(
-    useInteractive,
-    'Continue to configure authentication module after setting up redirects?',
-    true
-  );
-
-  if (shouldContinueToAuth) {
-    console.log(
-      chalk.cyan("💡 Great! Let's set up your authentication module.")
-    );
-    console.log(chalk.white('  • Run: locksmith generate'));
-    console.log(chalk.white('  • Or: locksmith add'));
-  } else {
-    console.log(
-      chalk.cyan('💡 You can set up authentication modules anytime with:')
-    );
-    console.log(chalk.white('  • locksmith generate'));
-    console.log(chalk.white('  • locksmith add'));
-  }
 }
 
 export async function handleConfigureCommand(options = {}) {
@@ -975,15 +931,8 @@ async function handleConfigureRedirects(options = {}) {
     console.log(chalk.gray(`  Environment ID: ${environmentId}`));
   }
 
-  // 2. Confirm redirect configuration
-  const confirmed = await confirmRedirectConfiguration(
-    useInteractive,
-    provider,
-    environmentId
-  );
-  if (!confirmed) {
-    return;
-  }
+  // 2. Display context and proceed without confirmation
+  await confirmRedirectConfiguration(useInteractive, provider, environmentId);
 
   // 3. Open redirect configuration
   const browserOpened = await openRedirectConfiguration(environmentId, verbose);

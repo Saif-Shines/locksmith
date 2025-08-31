@@ -286,24 +286,38 @@ export function hasToolDetection() {
 
 export function saveAuthModules(modules, additionalConfig = {}) {
   try {
-    authModulesConfig.set('selectedModules', modules);
-    authModulesConfig.set('selectedAt', new Date().toISOString());
-    authModulesConfig.set('version', '1.0');
+    const timestamp = new Date().toISOString();
 
-    // Store additional config properties
-    Object.keys(additionalConfig).forEach((key) => {
-      authModulesConfig.set(key, additionalConfig[key]);
+    // Merge with existing stored config to preserve keys like callbackUri
+    const existing = {
+      selectedModules: authModulesConfig.get('selectedModules', []),
+      selectedAt: authModulesConfig.get('selectedAt', null),
+      version: authModulesConfig.get('version', '1.0'),
+      callbackUri: authModulesConfig.get('callbackUri', null),
+    };
+
+    const merged = {
+      ...existing,
+      ...additionalConfig,
+      selectedModules: modules,
+      selectedAt: timestamp,
+      version: '1.0',
+    };
+
+    // Persist into conf store
+    authModulesConfig.set('selectedModules', merged.selectedModules);
+    authModulesConfig.set('selectedAt', merged.selectedAt);
+    authModulesConfig.set('version', merged.version);
+    // Persist all additional keys present in merged
+    Object.keys(merged).forEach((key) => {
+      if (!['selectedModules', 'selectedAt', 'version'].includes(key)) {
+        authModulesConfig.set(key, merged[key]);
+      }
     });
 
-    // Force write to disk to ensure file is created (workaround like saveCredentials)
+    // Force write to disk to ensure file is created and merged fields are preserved
     ensureConfigDir();
-    const configData = {
-      selectedModules: modules,
-      selectedAt: new Date().toISOString(),
-      version: '1.0',
-      ...additionalConfig,
-    };
-    fs.writeFileSync(AUTH_MODULES_FILE, JSON.stringify(configData, null, 2));
+    fs.writeFileSync(AUTH_MODULES_FILE, JSON.stringify(merged, null, 2));
   } catch (error) {
     console.error(
       chalk.red('❌ We had trouble saving your auth modules:'),

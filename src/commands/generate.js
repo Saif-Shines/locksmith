@@ -982,12 +982,7 @@ async function ensureCompleteSetup(handler) {
     const callbackUri = getCallbackUri();
     if (!callbackUri) {
       setupSpinner.stop();
-      const collected = await promptMissingCallbackUri(handler);
-      if (!collected) {
-        return false;
-      }
-
-      // After collecting a local callback URI, run provider-side redirect setup (interactive only)
+      // Open browser to configure redirects and then collect callback URI in that flow
       if (handler.useInteractive) {
         try {
           await handleConfigureRedirects({
@@ -1001,6 +996,12 @@ async function ensureCompleteSetup(handler) {
             )
           );
         }
+      } else {
+        console.log(
+          chalk.red('❌ Interactive mode required for callback URI setup')
+        );
+        console.log(chalk.cyan('💡 Run: locksmith configure auth --redirects'));
+        return false;
       }
       setupSpinner = startSpinner('SETUP_VALIDATION');
     }
