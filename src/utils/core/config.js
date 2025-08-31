@@ -89,7 +89,40 @@ export function saveCredentials(credentials) {
 
 export function loadCredentials() {
   try {
-    return credentialsConfig.get('credentials', null);
+    // Prefer in-memory conf store
+    const confCreds = credentialsConfig.get('credentials', null);
+    if (confCreds && Object.keys(confCreds).length > 0) {
+      return confCreds;
+    }
+
+    // Fallback: read legacy/onsaved file if present
+    if (fs.existsSync(CONFIG_FILE)) {
+      try {
+        const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        const fileCreds =
+          parsed && parsed.credentials ? parsed.credentials : parsed;
+
+        if (
+          fileCreds &&
+          typeof fileCreds === 'object' &&
+          Object.keys(fileCreds).length > 0
+        ) {
+          // Self-heal conf store for future reads
+          credentialsConfig.set('credentials', fileCreds);
+          if (parsed && parsed.savedAt) {
+            credentialsConfig.set('savedAt', parsed.savedAt);
+          } else {
+            credentialsConfig.set('savedAt', new Date().toISOString());
+          }
+          return fileCreds;
+        }
+      } catch (e) {
+        // Ignore parse errors here; the caller will see null and handle
+      }
+    }
+
+    return null;
   } catch (error) {
     console.error(
       chalk.red('❌ We had trouble reading your stored credentials:'),
@@ -106,8 +139,35 @@ export function hasCredentials() {
   }
 
   // Then check if we have actual credentials data
-  const credentials = credentialsConfig.get('credentials', null);
-  return credentials !== null && Object.keys(credentials).length > 0;
+  let credentials = credentialsConfig.get('credentials', null);
+  if (credentials && Object.keys(credentials).length > 0) {
+    return true;
+  }
+
+  // Fallback: attempt to read from file and populate conf
+  try {
+    const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    const fileCreds =
+      parsed && parsed.credentials ? parsed.credentials : parsed;
+    if (
+      fileCreds &&
+      typeof fileCreds === 'object' &&
+      Object.keys(fileCreds).length > 0
+    ) {
+      credentialsConfig.set('credentials', fileCreds);
+      if (parsed && parsed.savedAt) {
+        credentialsConfig.set('savedAt', parsed.savedAt);
+      } else {
+        credentialsConfig.set('savedAt', new Date().toISOString());
+      }
+      return true;
+    }
+  } catch (e) {
+    // ignore and fall through
+  }
+
+  return false;
 }
 
 export function getCredentials() {

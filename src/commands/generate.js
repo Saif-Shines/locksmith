@@ -41,7 +41,10 @@ import {
   promptRemainingCredentials,
   confirmAction,
 } from '../utils/interactive/prompts.js';
-import { handleConfigureLLMBroker } from './configure.js';
+import {
+  handleConfigureLLMBroker,
+  handleConfigureRedirects,
+} from './configure.js';
 import { handleInitCommand } from './init.js';
 import { handleAddCommand } from './add.js';
 
@@ -959,9 +962,25 @@ async function ensureCompleteSetup(handler) {
     const callbackUri = getCallbackUri();
     if (!callbackUri) {
       setupSpinner.stop();
-      const success = await promptMissingCallbackUri(handler);
-      if (!success) {
+      const collected = await promptMissingCallbackUri(handler);
+      if (!collected) {
         return false;
+      }
+
+      // After collecting a local callback URI, run provider-side redirect setup (interactive only)
+      if (handler.useInteractive) {
+        try {
+          await handleConfigureRedirects({
+            useInteractive: true,
+            verbose: handler.isVerbose(),
+          });
+        } catch (e) {
+          console.log(
+            chalk.yellow(
+              '⚠️  Redirect configuration step was skipped or failed. You can run it later with: locksmith configure auth --redirects'
+            )
+          );
+        }
       }
       setupSpinner = startSpinner('SETUP_VALIDATION');
     }
