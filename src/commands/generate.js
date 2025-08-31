@@ -51,6 +51,17 @@ const CLAUDE_MAX_LIMIT = 10000;
 const TEMP_FILE_PREFIX = 'locksmith-prompt-';
 
 /**
+ * Gets the path to the locksmith temp directory
+ */
+function getLocksmithTempDir() {
+  const tempDir = path.join(os.homedir(), '.locksmith', 'tmp');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  return tempDir;
+}
+
+/**
  * Validates module selection and returns selected modules
  */
 function validateModuleSelection(handler, moduleFlag, savedModules) {
@@ -130,6 +141,10 @@ async function validateInteractiveModuleSelection(handler, savedModules) {
   }
 
   displaySelectedModules(selectedModules);
+
+  // Save the selected modules to config
+  saveAuthModules(selectedModules);
+
   return { selectedModules, shouldContinue: true };
 }
 
@@ -151,17 +166,161 @@ function displaySelectedModules(selectedModules) {
 }
 
 /**
- * Builds the simplified generation prompt with guide URL based on selected modules
+ * Fetches guide content from URL
  */
-function buildGenerationPrompt(selectedModules) {
-  // Use the first selected module to determine the guide URL
-  // If multiple modules selected, default to full-stack-auth
-  const primaryModule =
-    selectedModules.length > 0 ? selectedModules[0] : 'full-stack-auth';
-  const guideUrl =
-    AUTH_MODULE_GUIDES[primaryModule] || AUTH_MODULE_GUIDES['full-stack-auth'];
+async function fetchGuideContent(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(chalk.yellow(`⚠️  Could not fetch guide from ${url}`));
+      return null;
+    }
+    return await response.text();
+  } catch (error) {
+    console.log(chalk.yellow(`⚠️  Failed to fetch guide: ${error.message}`));
+    return null;
+  }
+}
 
-  return `Integrate Scalekit into your technology stack by intelligently analyzing your project environment, including secrets and configuration found in your \`~/.locksmith\` directory. Reference the [FSA Quickstart guide](${guideUrl}) for step-by-step integration, ensuring correct SDK installation, secure environment variable management, and robust authentication flow implementation. Adapt all instructions to fit your project's conventions for maximum reliability and security, and request any missing context if your tech stack or token management details are unclear.`;
+/**
+ * Reads all files from locksmith config directory
+ */
+function readLocksmithConfigFiles() {
+  const configDir = path.join(os.homedir(), '.locksmith');
+  const configFiles = {};
+
+  try {
+    if (!fs.existsSync(configDir)) {
+      return configFiles;
+    }
+
+    const files = fs.readdirSync(configDir);
+    for (const file of files) {
+      const filePath = path.join(configDir, file);
+      // Skip directories and non-JSON files
+      if (fs.statSync(filePath).isFile() && file.endsWith('.json')) {
+        try {
+          const content = fs.readFileSync(filePath, 'utf8');
+          configFiles[file] = JSON.parse(content);
+        } catch (error) {
+          console.log(
+            chalk.yellow(`⚠️  Could not read ${file}: ${error.message}`)
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.log(
+      chalk.yellow(`⚠️  Could not read config directory: ${error.message}`)
+    );
+  }
+
+  return configFiles;
+}
+
+/**
+ * Builds the comprehensive generation prompt with guide content, config files, and LLM instructions
+ */
+async function buildGenerationPrompt(selectedModules) {
+  // Fetch guide content for selected modules
+  const guidePromises = selectedModules.map(async (moduleKey) => {
+    const guideUrl = AUTH_MODULE_GUIDES[moduleKey];
+    if (!guideUrl) {
+      console.log(
+        chalk.yellow(`⚠️  No guide URL found for module: ${moduleKey}`)
+      );
+      return null;
+    }
+
+    console.log(chalk.gray(`📖 Fetching guide for ${moduleKey}...`));
+    const content = await fetchGuideContent(guideUrl);
+    return content ? { module: moduleKey, content } : null;
+  });
+
+  const guideResults = await Promise.all(guidePromises);
+  const guides = guideResults.filter((result) => result !== null);
+
+  // Read locksmith config files
+  console.log(chalk.gray('📁 Reading configuration files...'));
+  const configFiles = readLocksmithConfigFiles();
+
+  // Build the comprehensive prompt
+  let prompt = `# ScaleKit Authentication Integration Request
+
+## Selected Authentication Modules
+${selectedModules
+  .map((moduleKey) => {
+    const settings = AUTH_MODULE_SETTINGS[moduleKey];
+    return `### ${settings?.name || moduleKey}
+**Description:** ${settings?.description || 'Unknown module'}
+**Features:** ${settings?.features?.join(', ') || 'N/A'}
+`;
+  })
+  .join('\n')}
+
+## Configuration Context
+The following configuration has been set up in the user's ~/.locksmith directory:
+
+${Object.entries(configFiles)
+  .map(([filename, content]) => {
+    return `### ${filename}
+\`\`\`json
+${JSON.stringify(content, null, 2)}
+\`\`\`
+`;
+  })
+  .join('\n')}
+
+## Integration Guides
+${guides
+  .map((guide) => {
+    return `### ${
+      AUTH_MODULE_SETTINGS[guide.module]?.name || guide.module
+    } Integration Guide
+${guide.content}
+`;
+  })
+  .join('\n')}
+
+## Instructions for AI Assistant
+
+You are being invoked as part of the Locksmith CLI to help integrate ScaleKit authentication into a user's technology stack. Your task is to:
+
+1. **Analyze the Project Environment:**
+   - Examine the configuration files provided above
+   - Identify the user's tech stack and current setup
+   - Determine appropriate integration patterns
+
+2. **Generate Authentication Code:**
+   - Create secure, production-ready authentication implementations
+   - Follow the integration guides provided above
+   - Adapt code to match the user's technology stack conventions
+   - Ensure proper error handling and security best practices
+
+3. **Environment Setup:**
+   - Configure environment variables securely
+   - Set up proper callback URLs
+   - Initialize SDKs with correct credentials
+
+4. **Implementation Requirements:**
+   - Use the credentials and configuration from ~/.locksmith
+   - Implement all selected authentication modules
+   - Provide clear, well-documented code
+   - Include proper error handling and logging
+
+5. **Security Considerations:**
+   - Never expose sensitive credentials in code
+   - Use environment variables for secrets
+   - Implement proper token management
+   - Follow OAuth/security best practices
+
+Please analyze the provided context and generate the appropriate authentication integration code for the selected modules. If you need additional information about the user's tech stack or project structure, request it explicitly.
+
+---
+*This prompt was generated by Locksmith CLI for secure authentication integration*
+`;
+
+  return prompt;
 }
 
 /**
@@ -186,11 +345,12 @@ function savePromptToFile(prompt, customPath) {
 }
 
 /**
- * Creates a temporary file with the prompt content
+ * Creates a temporary file with the prompt content in the locksmith temp directory
  */
 function createTempPromptFile(prompt) {
+  const locksmithTempDir = getLocksmithTempDir();
   const tempFile = path.join(
-    os.tmpdir(),
+    locksmithTempDir,
     `${TEMP_FILE_PREFIX}${Date.now()}.txt`
   );
   fs.writeFileSync(tempFile, prompt, 'utf8');
@@ -198,12 +358,33 @@ function createTempPromptFile(prompt) {
 }
 
 /**
- * Cleans up temporary files
+ * Cleans up temporary files and removes old temp files
  */
 function cleanupTempFiles(tempFile) {
   try {
+    // Clean up the specific temp file
     if (tempFile && fs.existsSync(tempFile)) {
       fs.unlinkSync(tempFile);
+    }
+
+    // Clean up old temp files (older than 1 hour)
+    const locksmithTempDir = getLocksmithTempDir();
+    const files = fs.readdirSync(locksmithTempDir);
+    const oneHourAgo = Date.now() - 60 * 60 * 1000; // 1 hour in milliseconds
+
+    for (const file of files) {
+      if (file.startsWith(TEMP_FILE_PREFIX)) {
+        const filePath = path.join(locksmithTempDir, file);
+        try {
+          const stats = fs.statSync(filePath);
+          if (stats.mtime.getTime() < oneHourAgo) {
+            fs.unlinkSync(filePath);
+            console.log(chalk.gray(`🧹 Cleaned up old temp file: ${file}`));
+          }
+        } catch (e) {
+          // Ignore errors when checking/cleaning old files
+        }
+      }
     }
   } catch (e) {
     // Ignore cleanup errors
@@ -854,7 +1035,8 @@ export async function handleGenerateCommand(options = {}) {
     const { selectedModules } = moduleValidation;
 
     // Build and optionally save the generation prompt
-    const combinedPrompt = buildGenerationPrompt(selectedModules);
+    console.log(chalk.gray('🔧 Building comprehensive generation prompt...'));
+    const combinedPrompt = await buildGenerationPrompt(selectedModules);
     if (promptOut) {
       savePromptToFile(combinedPrompt, promptOut);
     }

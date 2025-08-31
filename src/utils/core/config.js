@@ -201,6 +201,16 @@ export function saveAuthModules(modules, additionalConfig = {}) {
     Object.keys(additionalConfig).forEach((key) => {
       authModulesConfig.set(key, additionalConfig[key]);
     });
+
+    // Force write to disk to ensure file is created (workaround like saveCredentials)
+    ensureConfigDir();
+    const configData = {
+      selectedModules: modules,
+      selectedAt: new Date().toISOString(),
+      version: '1.0',
+      ...additionalConfig,
+    };
+    fs.writeFileSync(AUTH_MODULES_FILE, JSON.stringify(configData, null, 2));
   } catch (error) {
     console.error(
       chalk.red('❌ We had trouble saving your auth modules:'),
