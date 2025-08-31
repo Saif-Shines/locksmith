@@ -98,7 +98,6 @@ function getBasicFlags() {
     interactive: {
       desc: 'Run in interactive mode',
       shortFlag: 'i',
-      default: true,
     },
     verbose: {
       desc: 'Show detailed output',

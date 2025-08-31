@@ -7,6 +7,7 @@ import {
   savePreferredBroker,
   saveAuthModules,
   loadAuthModules,
+  hasCredentials,
 } from '../utils/core/config.js';
 import {
   detectTools,
@@ -18,12 +19,16 @@ import {
   selectIfInteractive,
   confirmIfInteractive,
   promptIfInteractive,
+  multiselectIfInteractive,
 } from '../utils/interactive/interactive.js';
 import { promptAuthProvider } from '../utils/interactive/prompts.js';
+import { handleInitCommand } from './init.js';
 import {
   SUPPORTED_PROVIDERS,
   AVAILABLE_BROKERS,
   DEFAULT_BROKER,
+  SUPPORTED_AUTH_MODULES,
+  AUTH_MODULE_SETTINGS,
 } from '../core/constants.js';
 
 // Constants
@@ -782,6 +787,20 @@ async function handleConfigureAuth(options = {}) {
 
   const useInteractive = shouldUseInteractive({ interactive, noInteractive });
 
+  // Ensure credentials are present; if not, run init flow (interactive) or instruct user
+  if (!hasCredentials()) {
+    if (!useInteractive) {
+      console.log(chalk.red('❌ No authentication credentials found.'));
+      console.log(
+        chalk.cyan('💡 Run ') +
+          chalk.white.bold('locksmith init --interactive') +
+          chalk.cyan(' to set up your credentials first.')
+      );
+      return;
+    }
+    await handleInitCommand({ interactive: true });
+  }
+
   // Handle redirects configuration
   if (redirects) {
     await handleConfigureRedirects({ useInteractive, verbose });
@@ -839,6 +858,45 @@ async function handleConfigureAuth(options = {}) {
   // 5. Save configuration
   try {
     saveAuthConfiguration(config, selectedProvider, dryRun, verbose);
+
+    // 6. Optionally, prompt user to select authentication modules now
+    if (useInteractive && !dryRun) {
+      console.log();
+      console.log(chalk.blue('📦 Configure authentication modules'));
+      const existing = loadAuthModules() || { selectedModules: [] };
+      const moduleChoices = SUPPORTED_AUTH_MODULES.map((moduleKey) => {
+        const settings = AUTH_MODULE_SETTINGS[moduleKey] || {
+          name: moduleKey,
+          description: 'Authentication module',
+        };
+        const checked = Array.isArray(existing.selectedModules)
+          ? existing.selectedModules.includes(moduleKey)
+          : false;
+        return {
+          name: `${settings.name} - ${settings.description}`,
+          value: moduleKey,
+          short: settings.name,
+          checked,
+        };
+      });
+
+      const selectedModules = await multiselectIfInteractive(
+        true,
+        'Select authentication modules to enable:',
+        moduleChoices,
+        existing.selectedModules || [],
+        { pageSize: 10 }
+      );
+
+      if (selectedModules && selectedModules.length > 0) {
+        saveAuthModules(selectedModules, existing);
+        console.log(
+          chalk.green(
+            `✅ Saved ${selectedModules.length} authentication module(s)`
+          )
+        );
+      }
+    }
   } catch (error) {
     console.log(
       chalk.red(`❌ Failed to configure authentication: ${error.message}`)
@@ -859,6 +917,20 @@ async function handleConfigureLLMBroker(options = {}) {
   }
 
   try {
+    // 0. Ensure credentials exist; if not, run init (interactive) or instruct
+    if (!hasCredentials()) {
+      if (!useInteractive) {
+        console.log(chalk.red('❌ No authentication credentials found.'));
+        console.log(
+          chalk.cyan('💡 Run ') +
+            chalk.white.bold('locksmith init --interactive') +
+            chalk.cyan(' first to set up credentials.')
+        );
+        return;
+      }
+      await handleInitCommand({ interactive: true });
+    }
+
     // 1. Detect available tools
     const detectedTools = detectAvailableTools(verbose);
 

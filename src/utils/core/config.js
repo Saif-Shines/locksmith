@@ -189,6 +189,16 @@ export function saveToolDetection(tools) {
     toolsConfig.set('detectedAt', new Date().toISOString());
     toolsConfig.set('tools', tools);
     toolsConfig.set('version', '1.0');
+
+    // Force write to disk to ensure llm-brokers.json exists alongside conf store
+    ensureConfigDir();
+    const filePayload = {
+      detectedAt: toolsConfig.get('detectedAt', null),
+      tools: toolsConfig.get('tools', {}),
+      version: toolsConfig.get('version', '1.1'),
+      preferredBroker: toolsConfig.get('preferredBroker', null),
+    };
+    fs.writeFileSync(TOOLS_FILE, JSON.stringify(filePayload, null, 2));
   } catch (error) {
     console.error(
       chalk.red('❌ We had trouble saving your tool detection:'),
@@ -205,6 +215,16 @@ export function savePreferredBroker(broker) {
     toolsConfig.set('version', '1.1');
     // Also update the detectedAt timestamp
     toolsConfig.set('detectedAt', new Date().toISOString());
+
+    // Force write to disk to ensure llm-brokers.json includes broker preference
+    ensureConfigDir();
+    const filePayload = {
+      detectedAt: toolsConfig.get('detectedAt', null),
+      tools: toolsConfig.get('tools', {}),
+      version: toolsConfig.get('version', '1.1'),
+      preferredBroker: toolsConfig.get('preferredBroker', broker),
+    };
+    fs.writeFileSync(TOOLS_FILE, JSON.stringify(filePayload, null, 2));
   } catch (error) {
     console.error(
       chalk.red('❌ We had trouble saving your preferred broker:'),

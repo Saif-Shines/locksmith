@@ -67,7 +67,7 @@ function getLocksmithTempDir() {
 /**
  * Validates module selection and returns selected modules
  */
-function validateModuleSelection(handler, moduleFlag, savedModules) {
+async function validateModuleSelection(handler, moduleFlag, savedModules) {
   if (savedModules.length === 0) {
     console.log(chalk.yellow('⚠️  No authentication modules configured.'));
     console.log(chalk.cyan('💡 Add modules first with: locksmith add'));
@@ -100,7 +100,30 @@ function validateModuleSelection(handler, moduleFlag, savedModules) {
   }
 
   if (handler.useInteractive) {
-    return validateInteractiveModuleSelection(handler, savedModules);
+    const result = await validateInteractiveModuleSelection(
+      handler,
+      savedModules
+    );
+    if (result.shouldContinue && result.selectedModules.length > 1) {
+      console.log(
+        chalk.yellow('⚠️  Please select only one module for generation')
+      );
+      return { selectedModules: [], shouldContinue: false };
+    }
+    return result;
+  }
+
+  if (savedModules.length > 1) {
+    console.log(
+      chalk.red(
+        '❌ Multiple modules configured. Please specify --module=<name>'
+      )
+    );
+    console.log(
+      chalk.cyan('💡 Configured modules:'),
+      chalk.white(savedModules.join(', '))
+    );
+    return { selectedModules: [], shouldContinue: false };
   }
 
   return { selectedModules: savedModules, shouldContinue: true };
@@ -112,7 +135,7 @@ function validateModuleSelection(handler, moduleFlag, savedModules) {
 async function validateInteractiveModuleSelection(handler, savedModules) {
   console.log(chalk.blue('📋 Available Authentication Modules:'));
   console.log(
-    chalk.gray('  Choose which modules to generate configurations for:')
+    chalk.gray('  Choose a single module to generate configuration for:')
   );
   console.log();
 
@@ -120,35 +143,32 @@ async function validateInteractiveModuleSelection(handler, savedModules) {
     const settings = AUTH_MODULE_SETTINGS[moduleKey];
     const isAlreadyConfigured = savedModules.includes(moduleKey);
     return {
-      name: `${settings.name} - ${settings.description}`,
+      name:
+        `${settings.name} - ${settings.description}` +
+        (isAlreadyConfigured ? ' (configured)' : ''),
       value: moduleKey,
       short: settings.name,
-      checked: isAlreadyConfigured,
     };
   });
 
-  const selectedModules = await multiselectIfInteractive(
+  const selectedModule = await selectIfInteractive(
     handler.useInteractive,
-    'Select modules to generate configurations for:',
+    'Select one module to generate configuration for:',
     moduleChoices,
-    savedModules,
-    { pageSize: 10 }
+    savedModules[0] || savedModules[0]
   );
 
-  if (selectedModules.length === 0) {
-    console.log(chalk.yellow('⚠️  No modules selected.'));
-    console.log(
-      chalk.cyan('💡 Select at least one module to generate configurations.')
-    );
+  if (!selectedModule) {
+    console.log(chalk.yellow('⚠️  No module selected.'));
     return { selectedModules: [], shouldContinue: false };
   }
 
-  displaySelectedModules(selectedModules);
+  displaySelectedModules([selectedModule]);
 
   // Save the selected modules to config
-  saveAuthModules(selectedModules);
+  saveAuthModules([selectedModule]);
 
-  return { selectedModules, shouldContinue: true };
+  return { selectedModules: [selectedModule], shouldContinue: true };
 }
 
 /**
@@ -1086,16 +1106,16 @@ export async function handleGenerateCommand(options = {}) {
         case 'gemini':
           await handleGeminiIntegration(handler, combinedPrompt, verbose);
           break;
-        case 'cursor':
+        case 'cursor-agent':
           await handleCursorAgentIntegration(handler, combinedPrompt, verbose);
           break;
         default:
           generationSpinner.fail(`Unsupported LLM broker: ${preferredBroker}`);
           console.log(
-            chalk.cyan('💡 Supported brokers: claude, gemini, cursor')
+            chalk.cyan('💡 Supported brokers: claude, gemini, cursor-agent')
           );
           return CommandResult.failure(
-            `Unsupported LLM broker: ${preferredBroker}. Supported: claude, gemini, cursor`
+            `Unsupported LLM broker: ${preferredBroker}. Supported: claude, gemini, cursor-agent`
           );
       }
 

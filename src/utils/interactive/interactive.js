@@ -103,14 +103,30 @@ export async function confirmIfInteractive(
  * @returns {boolean} Whether to run in interactive mode
  */
 export function shouldUseInteractive(options = {}) {
-  const { interactive, noInteractive } = options;
+  const { interactive, noInteractive, ...rest } = options;
 
   // Explicit flags take precedence
   if (interactive) return true;
   if (noInteractive) return false;
 
-  // Default behavior: interactive for commands that support it
-  return true;
+  // If no other flags/values are provided, default to interactive
+  const IGNORED_KEYS = new Set([
+    '_', // meow positional input
+    'help',
+    'version',
+    'verbose',
+    'dryRun',
+    'force',
+    'interactive',
+    'noInteractive',
+  ]);
+
+  const hasMeaningfulFlags = Object.entries(rest).some(([key, value]) => {
+    if (IGNORED_KEYS.has(key)) return false;
+    return value !== undefined && value !== null;
+  });
+
+  return !hasMeaningfulFlags;
 }
 
 /**
