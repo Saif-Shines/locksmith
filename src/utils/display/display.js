@@ -48,3 +48,33 @@ export function showMainInterface() {
   displayAsciiTitle();
   displayWelcomeBox();
 }
+
+export function displaySuccessBox(title, content, options = {}) {
+  const { width = 60 } = options;
+  const message = boxen(
+    chalk.green.bold(title) + '\n\n' + chalk.white(content),
+    {
+      padding: 1,
+      margin: 1,
+      borderStyle: 'round',
+      borderColor: 'green',
+      width,
+    }
+  );
+  console.log(message);
+}
+
+export function displayWarningBox(title, content, options = {}) {
+  const { width = 60 } = options;
+  const message = boxen(
+    chalk.yellow.bold(title) + '\n\n' + chalk.white(content),
+    {
+      padding: 1,
+      margin: 1,
+      borderStyle: 'round',
+      borderColor: 'yellow',
+      width,
+    }
+  );
+  console.log(message);
+}

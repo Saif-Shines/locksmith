@@ -16,4 +16,5 @@ export const COMMANDS = {
   },
   add: { desc: 'Add authentication providers' },
   generate: { desc: 'Generate secrets and configs' },
+  check: { desc: 'Check available AI tools (claude, gemini, cursor-agent)' },
 };

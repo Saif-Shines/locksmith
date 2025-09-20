@@ -11,10 +11,11 @@ import {
   handleConfigureCommand,
   handleAddCommand,
   handleGenerateCommand,
+  handleCheckCommand,
 } from '../commands_alias.js';
 
 function getCommandSuggestions(command) {
-  const availableCommands = ['init', 'configure', 'generate', 'add'];
+  const availableCommands = ['init', 'configure', 'generate', 'add', 'check'];
   const subcommands = ['auth', 'llm'];
 
   // Simple fuzzy matching
@@ -51,7 +52,7 @@ function handleUnknownCommand(command) {
   }
 
   console.log(
-    chalk.gray('\nAvailable commands: init, configure, generate, add')
+    chalk.gray('\nAvailable commands: init, configure, generate, add, check')
   );
   process.exit(1);
 }
@@ -104,6 +105,7 @@ export async function routeCommand(cli) {
         configure: handleConfigureCommand,
         add: handleAddCommand,
         generate: handleGenerateCommand,
+        check: handleCheckCommand,
       };
 
       if (commandHandlers[command]) {
