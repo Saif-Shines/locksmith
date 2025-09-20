@@ -32,6 +32,9 @@ function generateBasicHelp() {
     generate: {
       desc: 'Generate secure authentication configurations',
     },
+    check: {
+      desc: 'Check available AI tools (claude, gemini, cursor-agent)',
+    },
   };
 
   return meowHelp({
@@ -147,6 +150,17 @@ function generateDetailedExamples() {
   )}
    ${chalk.cyan('$ locksmith generate --module=sso')}         ${chalk.gray(
     'Generate SSO configuration only'
+  )}
+
+   ${chalk.bold('AI Tool Detection:')}
+   ${chalk.cyan('$ locksmith check')}                         ${chalk.gray(
+    'Check available AI tools'
+  )}
+   ${chalk.cyan('$ locksmith check --verbose')}               ${chalk.gray(
+    'Show detailed tool information'
+  )}
+   ${chalk.cyan('$ locksmith check --quiet')}                 ${chalk.gray(
+    'Check tools without output'
   )}
 
    ${chalk.bold('Advanced Usage:')}
